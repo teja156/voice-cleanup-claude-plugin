@@ -3,5 +3,7 @@
   "version": "0.1.0",
   "description": "Turn a raw voiceover recording (retakes, false starts, ums) into a clean voiceover that follows your script. Local speech recognition; Claude decides every cut, you approve.",
   "author": { "name": "Teja Swaroop Pothala" },
+  "repository": "https://github.com/teja156/voice-cleanup-claude-plugin",
+  "license": "MIT",
   "keywords": ["audio", "voiceover", "narration", "editing", "transcription"]
 }

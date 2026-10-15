@@ -233,5 +233,5 @@ evidence the cut needs.
 
 ## License
 
-The code in this repo: add a license before sharing it outside your organization. The speech models are downloaded
-separately and keep their own licenses (see above).
+The code in this repo is released under the [MIT License](LICENSE). The speech models are downloaded separately and
+keep their own licenses (see above).
