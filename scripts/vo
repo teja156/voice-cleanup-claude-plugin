@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# voiceover-cleanup launcher: creates its Python venv on first run (and again when requirements.txt changes), then runs
+# scripts/vo.py with the given arguments. Usage: scripts/vo <command> … (see `scripts/vo --help`).
+#
+# Data folder (venv + downloaded models), outside the plugin so updates keep it:
+#   $VOICEOVER_CLEANUP_HOME, else ~/.local/share/voiceover-cleanup
+# The speech model goes to <data folder>/models (override: $VOICEOVER_CLEANUP_MODELS). It is downloaded on first use.
+set -euo pipefail
+IFS=$'\n\t'
+
+log() { printf '%s [voiceover-cleanup] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2; }
+
+here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+root="$(dirname -- "$here")"
+data="${VOICEOVER_CLEANUP_HOME:-$HOME/.local/share/voiceover-cleanup}"
+venv="$data/venv"
+req="$root/requirements.txt"
+export VOICEOVER_CLEANUP_HOME="$data"
+
+pick_python() {
+  local c
+  for c in "${VOICEOVER_CLEANUP_PYTHON:-}" python3.12 python3.11 python3.10 python3; do
+    [[ -n "$c" ]] || continue
+    if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+      printf '%s' "$c"; return 0
+    fi
+  done
+  return 1
+}
+
+stamp="$venv/.requirements.sha256"
+want="$( { sha256sum "$req" 2>/dev/null || shasum -a 256 "$req"; } | cut -d' ' -f1)"
+if [[ ! -x "$venv/bin/python" || "$(cat "$stamp" 2>/dev/null || true)" != "$want" ]]; then
+  py="$(pick_python)" || { log "ERROR: Python 3.10 or newer is required (set VOICEOVER_CLEANUP_PYTHON to its path)"; exit 3; }
+  log "setting up the Python environment in $venv (first run only, about a minute)"
+  mkdir -p -- "$data"
+  "$py" -m venv "$venv" || { log "ERROR: could not create a venv (on Debian/Ubuntu: apt install python3-venv)"; exit 3; }
+  "$venv/bin/python" -m pip install --quiet --upgrade pip >&2
+  "$venv/bin/python" -m pip install --quiet -r "$req" >&2 || { log "ERROR: pip install failed"; exit 3; }
+  printf '%s' "$want" > "$stamp"
+  log "Python environment ready"
+fi
+
+for tool in ffmpeg ffprobe; do
+  command -v "$tool" >/dev/null 2>&1 || { log "ERROR: $tool not found on PATH (install ffmpeg: apt install ffmpeg / brew install ffmpeg)"; exit 4; }
+done
+
+exec "$venv/bin/python" -I "$here/vo.py" "$@"

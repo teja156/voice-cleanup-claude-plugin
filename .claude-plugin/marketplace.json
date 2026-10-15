@@ -1,0 +1,14 @@
+{
+  "name": "voiceover-cleanup",
+  "description": "Marketplace for the voiceover-cleanup Claude Code plugin.",
+  "owner": {
+    "name": "Teja Swaroop Pothala"
+  },
+  "plugins": [
+    {
+      "name": "voiceover-cleanup",
+      "source": "./",
+      "description": "Clean a raw voiceover against its script: keep the best take of every sentence, drop retakes, false starts, fillers, and asides."
+    }
+  ]
+}

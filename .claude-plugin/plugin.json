@@ -1,0 +1,7 @@
+{
+  "name": "voiceover-cleanup",
+  "version": "0.1.0",
+  "description": "Turn a raw voiceover recording (retakes, false starts, ums) into a clean voiceover that follows your script. Local speech recognition; Claude decides every cut, you approve.",
+  "author": { "name": "Teja Swaroop Pothala" },
+  "keywords": ["audio", "voiceover", "narration", "editing", "transcription"]
+}
