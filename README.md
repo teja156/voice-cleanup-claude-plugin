@@ -25,23 +25,23 @@ sentence, in script order, with even pauses, plus a **review page** where you ca
 
 The repo is both a plugin and a one-plugin marketplace.
 
+**From GitHub:** inside Claude Code, run:
+
+```
+/plugin marketplace add teja156/voice-cleanup-claude-plugin
+/plugin install voiceover-cleanup@voiceover-cleanup
+```
+
 **From a local clone:**
 
 ```
-git clone <repo-url> ~/voiceover-cleanup
+git clone https://github.com/teja156/voice-cleanup-claude-plugin.git ~/voiceover-cleanup
 ```
 
 Then, inside Claude Code:
 
 ```
 /plugin marketplace add ~/voiceover-cleanup
-/plugin install voiceover-cleanup@voiceover-cleanup
-```
-
-**From GitHub** (once the repo is pushed):
-
-```
-/plugin marketplace add <owner>/voiceover-cleanup
 /plugin install voiceover-cleanup@voiceover-cleanup
 ```
 
