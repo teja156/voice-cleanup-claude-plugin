@@ -113,7 +113,9 @@ NEXT STEPS
 1. Review: open <project>/review.html (or run `vo serve <project>` and open http://127.0.0.1:8801/review.html).
    It has the clean voiceover, every kept line with its reason, and everything dropped, each playable.
 2. Changes? Give notes in plain words (e.g. "S4.P2.1: use the earlier take"). They go back to this same agent.
-3. Approved? The clean voiceover is <project>/clean.wav (48 kHz, 24-bit WAV, no EQ or loudness processing).
+3. A word missing that the speech model didn't catch? `vo edit <project>` opens an editor (http://127.0.0.1:8802/) where you
+   drag it from the original into the clean timeline; Render writes <project>/clean_edited.wav.
+4. Approved? The clean voiceover is <project>/clean.wav (48 kHz, 24-bit WAV, no EQ or loudness processing).
 ```
 
 ## Don'ts

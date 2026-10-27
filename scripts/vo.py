@@ -12,6 +12,8 @@ Scripts do the mechanical work; Claude (the voiceover-editor agent) makes every 
   vo validate PROJECT                               check work/cuts.json (errors block apply)
   vo apply    PROJECT                               work/cuts.json → PROJECT/clean.wav + PROJECT/review.html
   vo serve    PROJECT [--port N]                    serve the review page on 127.0.0.1 (seeking works in long WAVs)
+  vo edit     PROJECT [--port N]                    voiceover editor on 127.0.0.1: drag pieces of the original into
+                                                    the clean timeline → PROJECT/clean_edited.wav
 
 PROJECT is a folder (created by prepare) holding everything for one voiceover: script.md (a copy of the script),
 work/ (source.wav, transcript, alignment, takes.md, cuts.json, …), clean.wav (the result), and review.html.
@@ -232,6 +234,10 @@ def cmd_serve(a, P):
     from serve import serve
     serve(P["root"], a.port)
 
+def cmd_edit(a, P):
+    from editor import edit
+    edit(P, a.port)
+
 def cmd_setup(a, P):
     from transcribe import ensure_models, models_dir
     for tool in ("ffmpeg", "ffprobe"):
@@ -260,6 +266,8 @@ def main():
         sub.add_parser(name).add_argument("project")
     q = sub.add_parser("apply"); q.add_argument("project"); q.add_argument("--port", type=int, default=8801, help=argparse.SUPPRESS)
     q = sub.add_parser("serve"); q.add_argument("project"); q.add_argument("--port", type=int, default=8801)
+    q = sub.add_parser("edit", help="open the voiceover editor (original + clean timelines)")
+    q.add_argument("project"); q.add_argument("--port", type=int, default=8802)
     a = ap.parse_args(); setup_logging(a.verbose)
     P = project_paths(a.project) if hasattr(a, "project") else None
     if a.cmd not in ("setup", "prepare") and not P["script"].exists():

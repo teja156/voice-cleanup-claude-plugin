@@ -136,6 +136,25 @@ On a remote machine, serve it and forward the port (seeking in long WAV files ne
 Sentence ids are `S<section>.P<paragraph>.<sentence>`, for example `S4.P2.1` is the first sentence of the second
 paragraph in section 4. The review page shows the id next to every line.
 
+### 5. Fix missing words by hand (optional)
+
+The speech model sometimes misses a word, so the cut leaves it out. Open the editor:
+
+```
+~/voiceover-cleanup/scripts/vo edit <project>         # http://127.0.0.1:8802/
+```
+
+It shows two timelines, the **original** recording and the **clean** voiceover, with waveforms and words. Green parts of
+the original are in the cut; words in red are unused words right next to a cut, the most likely dropped ones
+(`suspect ▸` jumps to the next). Select words in the original (drag, or click a word and Shift+click to extend), then
+drag the selection down onto the clean timeline where it belongs. Edges snap to pauses (hold Alt to place freely).
+Clicking the clean timeline jumps the original to the same spot. Inserted clips can be moved, trimmed at their edges,
+or deleted; Space plays the clean edit and Shift+Space the original.
+
+Edits save to `work/edits.json` as you go. **Render** writes `<project>/clean_edited.wav` (and
+`work/clean_edited_words.json`). `clean.wav` itself is never changed. If the cut is applied again, the saved edits no
+longer match and the editor starts fresh.
+
 You can also run the agent as your main session: `claude --agent voiceover-cleanup:voiceover-editor`.
 
 ## What's in a project folder
@@ -144,6 +163,7 @@ You can also run the agent as your main session: `claude --agent voiceover-clean
 <project>/
 ├── script.md            copy of your script (sentence ids come from this copy)
 ├── clean.wav            THE RESULT
+├── clean_edited.wav     clean.wav plus your hand edits (only if you rendered one in `vo edit`)
 ├── review.html          review page
 └── work/
     ├── source.wav           all input audio, joined, 48 kHz mono (every time in the project refers to this file)
@@ -155,7 +175,9 @@ You can also run the agent as your main session: `claude --agent voiceover-clean
     ├── takes.md / .json     the prepared view: candidate takes per sentence, with evidence
     ├── cuts.draft.json      the rule's starting point
     ├── cuts.json            Claude's decisions (what was kept, removed, and dropped, with reasons)
-    └── clean_words.json     where every kept sentence and word landed in clean.wav
+    ├── clean_words.json     where every kept sentence and word landed in clean.wav
+    ├── edits.json           the editor's clip list (after `vo edit`)
+    └── clean_edited_words.json  word times in clean_edited.wav (after rendering in the editor)
 ```
 
 ## How it works
@@ -180,6 +202,7 @@ vo draft    PROJECT                               cuts.draft.json from the rule 
 vo validate PROJECT                               check work/cuts.json
 vo apply    PROJECT                               work/cuts.json → clean.wav + review.html
 vo serve    PROJECT [--port N]                    serve the review page on 127.0.0.1
+vo edit     PROJECT [--port N]                    voiceover editor: drag pieces of the original into the clean timeline
 ```
 
 ### Data folder

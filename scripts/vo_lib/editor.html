@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voiceover editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0E1012; --panel: #15181B; --panel-2: #1B1F23; --line: #262B31; --line-2: #323840;
+  --ink: #E8ECEF; --muted: #8A939C; --dim: #5B636C;
+  --mint: #5FE0C1; --sky: #7DB7F5; --amber: #FFB547; --rose: #FF5C8A; --sel: #8AB4FF;
+  --display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --ui: "Instrument Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body { margin: 0; min-height: 100vh; color: var(--ink); font: 14px/1.45 var(--ui);
+       background: radial-gradient(1200px 500px at 15% -10%, rgba(95,224,193,.07), transparent 60%),
+                   radial-gradient(900px 400px at 100% 0%, rgba(255,181,71,.05), transparent 60%), var(--bg); }
+button { font: 600 13px var(--ui); color: var(--ink); background: var(--panel-2); border: 1px solid var(--line-2);
+         border-radius: 8px; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, color .15s, transform .08s; }
+button:hover:not(:disabled) { border-color: #4A525C; background: #22272C; }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .35; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+kbd { font: 500 11px var(--mono); color: var(--ink); background: #22272C; border: 1px solid var(--line-2); border-bottom-width: 2px;
+      border-radius: 5px; padding: 0 5px; }
+code { font: 12px var(--mono); color: var(--mint); }
+
+/* ---------- top bar: brand · transport · tools */
+.top { position: sticky; top: 0; z-index: 6; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px;
+       padding: 12px 22px; background: rgba(14,16,18,.86); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mark { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none;
+        font: 800 14px var(--display); letter-spacing: .02em; color: #0E1012;
+        background: conic-gradient(from 210deg, var(--mint), var(--sky), var(--amber), var(--mint)); }
+.eyebrow { font: 600 10px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.brand h1 { margin: 0; font: 700 20px/1.1 var(--display); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.transport { display: flex; align-items: center; gap: 14px; padding: 6px 8px 6px 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.round { width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 15px; color: #0E1012; background: var(--mint); border-color: var(--mint); }
+.round:hover:not(:disabled) { background: #7DEBD0; border-color: #7DEBD0; }
+.round.on, .round.on:hover:not(:disabled) { background: var(--amber); border-color: var(--amber); }
+.tc { display: grid; line-height: 1.05; min-width: 170px; }
+.tc .time { font: 500 24px var(--mono); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tc .time small { font-size: 12px; color: var(--dim); margin-left: 6px; }
+.tc em { font: 600 10px var(--mono); font-style: normal; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.tc em.live { color: var(--amber); }
+.chip.on, .chip.on:hover:not(:disabled) { color: #0E1012; background: var(--amber); border-color: var(--amber); }
+.tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.icon { width: 34px; padding: 6px 0; font-size: 16px; line-height: 1; }
+.zoom { display: flex; align-items: center; gap: 6px; font: 500 12px var(--mono); color: var(--dim); }
+.zoom input { width: 110px; accent-color: var(--mint); }
+.status { display: inline-flex; align-items: center; gap: 7px; font: 500 12px var(--mono); color: var(--muted); min-width: 92px; }
+.status i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dim); box-shadow: 0 0 0 3px rgba(91,99,108,.18); }
+.status i.ok { background: var(--mint); box-shadow: 0 0 0 3px rgba(95,224,193,.16); }
+.status i.busy { background: var(--amber); box-shadow: 0 0 0 3px rgba(255,181,71,.16); }
+.status i.err { background: var(--rose); box-shadow: 0 0 0 3px rgba(255,92,138,.18); }
+.primary { color: #0E1012; background: var(--amber); border-color: var(--amber); font-weight: 700; padding: 6px 14px; display: grid; line-height: 1.15; text-align: left; }
+.primary small { font: 500 10px var(--mono); opacity: .7; }
+.primary:hover:not(:disabled) { background: #FFC56E; border-color: #FFC56E; }
+
+main { padding: 18px 22px 48px; display: grid; gap: 16px; }
+
+/* ---------- the three steps */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.step { display: flex; gap: 12px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.step > b { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+            font: 700 13px var(--mono); color: var(--mint); border: 1px solid rgba(95,224,193,.4); background: rgba(95,224,193,.08); }
+.step h3 { margin: 0 0 2px; font: 700 15px var(--display); }
+.step p { margin: 0; color: var(--muted); font-size: 13px; }
+.step .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.count { font: 600 12px var(--mono); color: var(--rose); padding: 3px 9px; border-radius: 999px; background: rgba(255,92,138,.1); border: 1px solid rgba(255,92,138,.3); }
+.count.none { color: var(--mint); background: rgba(95,224,193,.08); border-color: rgba(95,224,193,.3); }
+#help { display: none; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+#help.open { display: block; }
+#help dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px 22px; }
+#help div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+#help dt { white-space: nowrap; }
+#help dd { margin: 0; color: var(--muted); text-align: right; }
+.note { padding: 10px 14px; border-radius: 12px; color: #FFD9A0; background: rgba(255,181,71,.08); border: 1px solid rgba(255,181,71,.3); }
+
+/* ---------- tracks: channel strip + lane */
+.track { display: grid; grid-template-columns: 210px minmax(0, 1fr); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.head { padding: 14px; border-right: 1px solid var(--line); background: linear-gradient(180deg, var(--panel-2), var(--panel)); display: flex; flex-direction: column; gap: 10px; }
+.tname { display: flex; align-items: center; gap: 9px; font: 700 17px var(--display); }
+.tname i { width: 10px; height: 26px; border-radius: 3px; background: var(--mint); box-shadow: 0 0 14px rgba(95,224,193,.35); }
+.edit .tname i { background: linear-gradient(var(--sky), var(--amber)); box-shadow: 0 0 14px rgba(125,183,245,.3); }
+.file { font: 500 11px var(--mono); color: var(--dim); margin-top: -6px; }
+.meta { margin: 0; display: grid; gap: 3px; font: 12px var(--mono); }
+.meta div { display: flex; justify-content: space-between; gap: 8px; }
+.meta dt { color: var(--dim); }
+.meta dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+.meta dd.sel { color: var(--sel); } .meta dd.hl { color: var(--amber); }
+.legend { display: grid; gap: 4px; font-size: 12px; color: var(--muted); margin-top: auto; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+.lane { min-width: 0; display: grid; align-content: start; }
+.ov { display: block; width: 100%; height: 30px; cursor: pointer; border-bottom: 1px solid var(--line); touch-action: none; }
+.scroller { overflow-x: auto; overflow-y: hidden; position: relative; scrollbar-color: #3A414A transparent; }
+.scroller canvas { position: sticky; left: 0; display: block; cursor: text; touch-action: none; }
+.spacer { height: 1px; }
+
+/* ---------- edit list + output */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.panel > h2 { margin: 0; padding: 12px 16px; font: 700 15px var(--display); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.panel > h2 span { font: 500 11px var(--mono); color: var(--dim); }
+#inserts { list-style: none; margin: 0; padding: 4px 8px; }
+#inserts li { display: grid; grid-template-columns: 84px 190px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px; border-radius: 8px; font: 12px var(--mono); }
+#inserts li:hover { background: var(--panel-2); }
+#inserts li + li { border-top: 1px solid var(--line); }
+#inserts .at { color: var(--amber); font-weight: 700; }
+#inserts .src { color: var(--muted); }
+#inserts .words { font: italic 14px var(--ui); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#inserts li.empty { display: block; color: var(--dim); font: 13px var(--ui); padding: 12px 8px; }
+#rendered { display: none; }
+#rendered .body { display: flex; align-items: center; gap: 14px; padding: 12px 16px; flex-wrap: wrap; }
+#r-info { font: 12px var(--mono); color: var(--muted); }
+#rendered audio { height: 34px; flex: 1; min-width: 260px; }
+
+#ghost { position: fixed; pointer-events: none; z-index: 10; display: none; padding: 5px 11px; border-radius: 999px;
+         font: 700 12px var(--mono); color: #0E1012; background: var(--amber); box-shadow: 0 6px 22px rgba(255,181,71,.35); }
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; z-index: 20; pointer-events: none;
+         padding: 10px 16px; border-radius: 10px; font: 600 13px var(--ui); background: #22272C; border: 1px solid var(--line-2);
+         box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: opacity .2s, transform .2s; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1150px) {
+  .top { grid-template-columns: 1fr auto; } .tools { grid-column: 1 / -1; justify-content: flex-start; }
+  .steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .top { grid-template-columns: 1fr; padding: 10px 16px; position: static; } main { padding: 14px 16px 40px; }
+  .transport { flex-wrap: wrap; } .tc { min-width: 0; } .tc .time { font-size: 19px; white-space: nowrap; }
+  .track { grid-template-columns: 1fr; } .head { border-right: 0; border-bottom: 1px solid var(--line); }
+  #inserts li { grid-template-columns: 1fr auto auto; } #inserts .src, #inserts .words { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="mark">VO</div>
+    <div><div class="eyebrow">Voiceover editor</div><h1 id="pname">…</h1></div>
+  </div>
+  <div class="transport">
+    <button class="round" id="e-play" title="Play the clean edit from the cursor (Space)" aria-label="Play clean edit">▶</button>
+    <div class="tc"><span class="time"><span id="tc">00:00.00</span><small>/ <span id="tc-total">00:00.00</span></small></span><em id="tc-label">clean edit · cursor</em></div>
+    <button class="chip" id="o-play" title="Play the original from its cursor, or the selection (Shift+Space)">▶ Original</button>
+  </div>
+  <div class="tools">
+    <button class="icon" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+    <button class="icon" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+    <label class="zoom" title="Zoom (Ctrl+wheel, + / −)">− <input id="zoom" type="range" min="0" max="100" value="70" aria-label="Zoom"> +</label>
+    <button class="icon" id="help-btn" title="Shortcuts" aria-label="Shortcuts">?</button>
+    <button id="reset" title="Drop every edit: back to clean.wav as it is">Reset</button>
+    <span class="status"><i id="dot"></i><span id="status">loading…</span></span>
+    <button class="primary" id="render" title="Write clean_edited.wav (clean.wav is never changed)">Render<small>clean_edited.wav</small></button>
+  </div>
+</header>
+
+<main>
+  <div id="note" class="note" style="display:none"></div>
+
+  <section class="steps" aria-label="How to add missing words">
+    <div class="step"><b>1</b><div>
+      <h3>Find the gap</h3>
+      <p>Words in <span style="color:var(--rose)">rose</span> were left out right next to a cut: the likeliest dropped words.</p>
+      <div class="row"><button id="o-prev" title="Previous suspect">◂</button><span class="count" id="sus-count">–</span><button id="o-next" title="Next suspect">▸</button></div>
+    </div></div>
+    <div class="step"><b>2</b><div>
+      <h3>Select it in the original</h3>
+      <p>Drag across the words, or click a word and <kbd>Shift</kbd>+click to extend. <kbd>Shift</kbd>+<kbd>Space</kbd> plays the selection.</p>
+    </div></div>
+    <div class="step"><b>3</b><div>
+      <h3>Drag it into the clean edit</h3>
+      <p>Drop it where it belongs; it snaps to the nearest pause (<kbd>Alt</kbd> places freely). Or click the clean timeline there, then:</p>
+      <div class="row"><button id="o-insert" title="Insert the selection at the clean cursor (I)" disabled>Insert at clean cursor <kbd>I</kbd></button></div>
+    </div></div>
+  </section>
+
+  <section id="help" aria-label="Shortcuts">
+    <dl>
+      <div><dt><kbd>Space</kbd></dt><dd>play / pause the clean edit</dd></div>
+      <div><dt><kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>play the original (or its selection)</dd></div>
+      <div><dt>click clean timeline</dt><dd>move cursor, jump original there</dd></div>
+      <div><dt>drag inserted clip</dt><dd>move it · drag its edges to trim</dd></div>
+      <div><dt><kbd>Delete</kbd></dt><dd>remove selected clip or clean range</dd></div>
+      <div><dt><kbd>I</kbd></dt><dd>insert selection at the clean cursor</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+<kbd>Z</kbd> · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></dt><dd>undo · redo</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+wheel · <kbd>+</kbd> <kbd>−</kbd></dt><dd>zoom</dd></div>
+      <div><dt><kbd>Esc</kbd></dt><dd>clear selections</dd></div>
+      <div><dt>overview strip</dt><dd>click or drag to scroll</dd></div>
+    </dl>
+  </section>
+
+  <section class="track orig" id="t-orig">
+    <aside class="head">
+      <div class="tname"><i></i>Original</div>
+      <div class="file">work/source.wav</div>
+      <dl class="meta" id="o-info"></dl>
+      <div class="legend">
+        <span><i style="background:var(--mint)"></i>in the clean cut</span>
+        <span><i style="background:var(--amber)"></i>inserted</span>
+        <span><i style="background:var(--rose)"></i>suspect</span>
+        <span><i style="background:#4A525C"></i>unused (other takes)</span>
+      </div>
+    </aside>
+    <div class="lane">
+      <canvas class="ov" id="o-ov"></canvas>
+      <div class="scroller" id="o-scroll"><canvas id="o-canvas"></canvas><div class="spacer" id="o-spacer"></div></div>
+    </div>
+  </section>
+
+  <section class="track edit" id="t-edit">
+    <aside class="head">
+      <div class="tname"><i></i>Clean edit</div>
+      <div class="file">clean.wav + inserts</div>
+      <dl class="meta" id="e-info"></dl>
+      <div class="legend">
+        <span><i style="background:var(--sky)"></i>from clean.wav</span>
+        <span><i style="background:var(--amber)"></i>inserted from original</span>
+      </div>
+    </aside>
+    <div class="lane">
+      <canvas class="ov" id="e-ov"></canvas>
+      <div class="scroller" id="e-scroll"><canvas id="e-canvas"></canvas><div class="spacer" id="e-spacer"></div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Edit list <span id="ins-count"></span></h2>
+    <ul id="inserts"></ul>
+  </section>
+
+  <section class="panel" id="rendered">
+    <h2>Output <span>clean_edited.wav</span></h2>
+    <div class="body"><span id="r-info"></span><audio controls preload="none" id="r-audio"></audio></div>
+  </section>
+</main>
+<div id="ghost"></div>
+<div id="toast" role="status"></div>
+<script>
+"use strict";
+// ------------------------------------------------------------------ data
+const RULER = 20, WAVE = 110, WORDS = 50, H = RULER + WAVE + WORDS, SNAP = 0.30, XF = 0.012;
+const C = { bg: "#121518", ruler: "#181C20", tick: "#2C323A", rulerText: "#6E7780", lane: "#262B31",
+            mint: "#5FE0C1", sky: "#7DB7F5", amber: "#FFB547", rose: "#FF5C8A", unused: "#3E454E",
+            usedTint: "rgba(95,224,193,.07)", insTint: "rgba(255,181,71,.13)", susTint: "rgba(255,92,138,.10)", cleanTint: "rgba(125,183,245,.05)",
+            sel: "rgba(138,180,255,.16)", selEdge: "#8AB4FF", cursor: "#FF5C8A", play: "#FFB547", sid: "#56606A" };
+const MONO = '"JetBrains Mono", ui-monospace, Consolas, monospace', UI = '"Instrument Sans", system-ui, sans-serif';
+const S = { clips: [], undo: [], redo: [], sel: null, eSel: null, selClip: -1, cursorO: 0, cursorE: 0, locate: null,
+            drag: null, drop: null, playE: null, playO: false, hoverO: null, hoverE: null };
+let T, FRAME, PLACE;
+const $ = id => document.getElementById(id);
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const fmt = t => { t = Math.max(0, t); const m = Math.floor(t / 60), s = t - m * 60; return `${String(m).padStart(2, "0")}:${s.toFixed(2).padStart(5, "0")}`; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+// ------------------------------------------------------------------ clip list (the edit)
+const len = c => c.b - c.a;
+const total = () => S.clips.reduce((s, c) => s + len(c), 0);
+function layout() { let p = 0; return S.clips.map(c => { const o = p; p += len(c); return o; }); }
+function at(t) {        // clip index and position for edited time t
+  let p = 0;
+  for (let i = 0; i < S.clips.length; i++) { const l = len(S.clips[i]); if (t < p + l || i === S.clips.length - 1) return { i, pos: p, inner: clamp(t - p, 0, l) }; p += l; }
+  return { i: 0, pos: 0, inner: 0 };
+}
+function normalize(cl) {
+  const out = [];
+  for (const c of cl) {
+    if (c.b - c.a < 0.005) continue;
+    const p = out[out.length - 1];
+    if (p && p.src === c.src && Math.abs(p.b - c.a) < 1e-4) p.b = c.b; else out.push({ ...c });
+  }
+  return out;
+}
+function commit(next) {
+  S.undo.push(JSON.stringify(S.clips)); S.redo = [];
+  S.clips = normalize(next); changed();
+}
+function splitAt(cl, t) {   // returns [clips, index of the first clip after t]
+  let p = 0; const out = [];
+  let k = cl.length;
+  for (const c of cl) {
+    const l = len(c);
+    if (k === cl.length && t <= p + 1e-6) k = out.length;
+    if (k === cl.length && t > p + 1e-6 && t < p + l - 1e-6) { out.push({ ...c, b: c.a + (t - p) }); k = out.length; out.push({ ...c, a: c.a + (t - p) }); }
+    else out.push({ ...c });
+    p += l;
+  }
+  return [out, k];
+}
+function insertAt(t, clip) { const [cl, k] = splitAt(S.clips, t); cl.splice(k, 0, clip); return cl; }
+function deleteRange(t0, t1) {
+  let [cl] = splitAt(S.clips, t0); [cl] = splitAt(cl, t1);
+  let p = 0; const out = [];
+  for (const c of cl) { const l = len(c); if (!(p >= t0 - 1e-6 && p + l <= t1 + 1e-6)) out.push(c); p += l; }
+  return out;
+}
+
+// ------------------------------------------------------------------ audio analysis helpers
+function quietAt(tr, t) { const f = Math.floor(t / FRAME); return f < 0 || f >= tr.quiet.length || tr.quiet[f] === 1; }
+// nearest point in a pause: dir -1 searches back (start of a selection), +1 forward (end), 0 both (a drop point → middle of the pause)
+function snap(tr, t, dir, radius = SNAP) {
+  const run = 4, n = tr.quiet.length, f0 = Math.floor(t / FRAME), R = Math.round(radius / FRAME);
+  const isQ = f => f < 0 || f >= n || tr.quiet[f] === 1;
+  const inRun = f => { let c = 0; for (let k = f - run + 1; k <= f + run - 1; k++) { c = isQ(k) ? c + 1 : 0; if (c >= run) return true; } return false; };
+  if (dir === 0) {
+    for (let d = 0; d <= R; d++) for (const f of [f0 - d, f0 + d]) if (inRun(f)) {
+      let a = f, b = f; while (a - 1 >= 0 && isQ(a - 1) && f - a < 60) a--; while (b + 1 < n && isQ(b + 1) && b - f < 60) b++;
+      return ((a + b + 1) / 2) * FRAME;
+    }
+    return t;
+  }
+  for (let d = 0; d <= R; d++) { const f = f0 + dir * d; if (inRun(f)) return clamp((f + (dir < 0 ? 1 : 0)) * FRAME, 0, tr.duration); }
+  return t;
+}
+// clean.wav time → source.wav time, through the placement the cut was built from
+function cleanToSource(t) {
+  if (!PLACE.length) return null;
+  for (let i = 0; i < PLACE.length; i++) {
+    const p = PLACE[i]; if (!p.out) continue;
+    if (t < p.out[0]) return i ? PLACE[i - 1].src[1] + Math.min(t - PLACE[i - 1].out[1], 0.5) : p.src[0] - (p.out[0] - t);
+    if (t <= p.out[1]) {
+      let acc = p.out[0], s0 = p.src[0];
+      const pieces = [];
+      for (const r of [...p.removed].sort((a, b) => a[0] - b[0])) { if (r[0] > s0) pieces.push([s0, r[0]]); s0 = Math.max(s0, r[1]); }
+      pieces.push([s0, p.src[1]]);
+      for (const [u, v] of pieces) { if (t <= acc + (v - u)) return u + (t - acc); acc += v - u - XF; }
+      return p.src[1];
+    }
+  }
+  const p = PLACE[PLACE.length - 1]; return p.src[1] + (t - p.out[1]);
+}
+function editedToSource(t) {
+  const { i, inner } = at(t), c = S.clips[i];
+  return c.src === "source" ? c.a + inner : cleanToSource(c.a + inner);
+}
+// ranges of the original that are in the edit: the cut's placement plus inserted clips
+function usedRanges() {
+  const out = [];
+  for (const p of PLACE) { let s0 = p.src[0]; for (const r of [...p.removed].sort((a, b) => a[0] - b[0])) { if (r[0] > s0) out.push([s0, r[0], "used"]); s0 = Math.max(s0, r[1]); } out.push([s0, p.src[1], "used"]); }
+  return out;
+}
+let USED = [], SUSPECTS = [];
+function computeSuspects() {
+  // unused words within 1.2 s of the edge of a kept range: the most likely dropped words (or a false start before a retake)
+  const used = USED, words = T.source.words, ins = S.clips.filter(c => c.src === "source");
+  const inR = w => used.some(r => w.start + 0.02 >= r[0] && w.end - 0.02 <= r[1]) || ins.some(c => w.start + 0.02 >= c.a && w.end - 0.02 <= c.b);
+  for (const w of words) w.used = inR(w);
+  for (const w of words) w.suspect = !w.used && used.some(r => (w.end <= r[0] && r[0] - w.end < 1.2) || (w.start >= r[1] && w.start - r[1] < 1.2));
+  SUSPECTS = [];
+  for (const w of words) { if (!w.suspect) continue; const g = SUSPECTS[SUSPECTS.length - 1]; if (g && w.start - g.end < 0.8) { g.end = w.end; g.n++; } else SUSPECTS.push({ start: w.start, end: w.end, n: 1 }); }
+  const sc = $("sus-count"); sc.textContent = SUSPECTS.length ? `${SUSPECTS.length} suspect${SUSPECTS.length > 1 ? "s" : ""}` : "none left";
+  sc.classList.toggle("none", !SUSPECTS.length);
+}
+
+// ------------------------------------------------------------------ views
+class View {
+  constructor(key, dur) {
+    this.key = key; this.sc = $(key + "-scroll"); this.cv = $(key + "-canvas"); this.sp = $(key + "-spacer");
+    this.ctx = this.cv.getContext("2d"); this.pps = 60; this.dur = dur;
+    this.sc.addEventListener("scroll", () => draw());
+    this.sc.addEventListener("wheel", e => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const x = e.clientX - this.cv.getBoundingClientRect().left, t = this.t(x);
+      setZoom(this.pps * (e.deltaY < 0 ? 1.25 : 0.8), { view: this, t, x });
+    }, { passive: false });
+  }
+  get w() { return this.sc.clientWidth; }
+  get v0() { return this.sc.scrollLeft / this.pps; }
+  x(t) { return (t - this.v0) * this.pps; }
+  t(x) { return this.v0 + x / this.pps; }
+  size(dur) {
+    if (dur !== undefined) this.dur = dur;
+    this.sp.style.width = Math.max(this.w, Math.ceil(this.dur * this.pps + 40)) + "px";
+    const dpr = window.devicePixelRatio || 1;
+    if (this.cv.width !== Math.round(this.w * dpr) || this.cv.height !== Math.round(H * dpr)) {
+      this.cv.width = Math.round(this.w * dpr); this.cv.height = Math.round(H * dpr);
+      this.cv.style.width = this.w + "px"; this.cv.style.height = H + "px";
+    }
+    this.cv.style.marginBottom = -1 + "px";
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  show(t, center = true) {
+    const x = this.x(t);
+    if (center || x < 40 || x > this.w - 40) this.sc.scrollLeft = Math.max(0, t * this.pps - (center ? this.w / 2 : 60));
+  }
+  localX(e) { return e.clientX - this.cv.getBoundingClientRect().left; }
+  localY(e) { return e.clientY - this.cv.getBoundingClientRect().top; }
+  over(e) { const r = this.cv.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 30 && e.clientY <= r.bottom + 30; }
+}
+let VO, VE;
+function setZoom(pps, anchor) {
+  pps = clamp(pps, 2, 600);
+  for (const v of [VO, VE]) {
+    const a = anchor && anchor.view === v ? anchor : { t: v.t(v.w / 2), x: v.w / 2 };
+    v.pps = pps; v.size(); v.sc.scrollLeft = Math.max(0, a.t * pps - a.x);
+  }
+  $("zoom").value = Math.round(100 * Math.log(pps / 2) / Math.log(300));
+  draw();
+}
+
+// ------------------------------------------------------------------ drawing
+function ruler(ctx, v) {
+  ctx.fillStyle = C.ruler; ctx.fillRect(0, 0, v.w, RULER);
+  const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
+  const step = steps.find(s => s * v.pps >= 80) || 600;
+  ctx.font = `10px ${MONO}`; ctx.textBaseline = "alphabetic"; ctx.strokeStyle = C.tick; ctx.lineWidth = 1;
+  for (let t = Math.floor(v.v0 / step) * step; t < v.t(v.w); t += step) {
+    const x = Math.round(v.x(t)) + .5; ctx.beginPath(); ctx.moveTo(x, RULER - 7); ctx.lineTo(x, RULER); ctx.stroke();
+    ctx.fillStyle = C.rulerText; ctx.fillText(step < 1 ? fmt(t) : fmt(t).replace(/\.00$/, ""), x + 4, 13);
+    for (let k = 1; k < 4; k++) { const xm = Math.round(v.x(t + k * step / 4)) + .5; ctx.beginPath(); ctx.moveTo(xm, RULER - 3); ctx.lineTo(xm, RULER); ctx.stroke(); }
+  }
+  ctx.fillStyle = C.lane; ctx.fillRect(0, RULER - 1, v.w, 1); ctx.fillRect(0, RULER + WAVE, v.w, 1);
+}
+function wave(ctx, v, tr, a, b, pos, color) {   // draw tr's peaks for its range [a,b] placed at view time pos
+  const mid = RULER + WAVE / 2, xa = v.x(pos), xb = v.x(pos + b - a);
+  const p0 = Math.max(0, Math.floor(xa)), p1 = Math.min(v.w, Math.ceil(xb)), fn = typeof color === "function";
+  let cur = fn ? null : color; ctx.fillStyle = cur;
+  for (let px = p0; px < p1; px++) {
+    const t0 = a + (px - xa) / v.pps, t1 = t0 + 1 / v.pps;
+    let f0 = Math.max(0, Math.floor(t0 / FRAME)), f1 = Math.min(tr.peaks.length, Math.max(f0 + 1, Math.ceil(t1 / FRAME)));
+    if (t0 > b) break;
+    let m = 0; for (let f = f0; f < f1; f++) if (tr.peaks[f] > m) m = tr.peaks[f];
+    if (fn) { const c = color(t0); if (c !== cur) { cur = c; ctx.fillStyle = c; } }
+    const h = Math.max(.5, m / 255 * (WAVE / 2 - 6));
+    ctx.fillRect(px, mid - h, 1, h * 2);
+  }
+}
+function words(ctx, v, list, a, b, pos, style, hits) {
+  ctx.font = `500 12px ${UI}`; ctx.textBaseline = "middle";
+  const y = RULER + WAVE + 4, h = WORDS - 10, lo = v.v0 - 2, hi = v.t(v.w) + 2, shown = [];
+  for (const w of list) {
+    if (w.end < a || w.start > b) continue;
+    const t0 = pos + w.start - a, t1 = pos + Math.min(w.end, b) - a;
+    if (t1 < lo || t0 > hi) continue;
+    const x0 = v.x(t0), x1 = v.x(t1), st = style(w);
+    ctx.fillStyle = st.bg; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0, y, Math.max(2, x1 - x0 - 1), h, 3) : ctx.rect(x0, y, Math.max(2, x1 - x0 - 1), h); ctx.fill();
+    shown.push({ w, x0, x1, st });
+  }
+  // labels on top of the boxes, in two staggered rows; a label that fits in neither row is left out (zoom in to see it)
+  const rows = [y + h * 0.28, y + h * 0.74], last = [-1e9, -1e9];
+  ctx.font = `500 11px ${UI}`;
+  for (const s of shown) {
+    const tw = ctx.measureText(s.w.w).width + 5, r = last.findIndex(l => s.x0 >= l);
+    if (r < 0) { if (hits) hits.push({ w: s.w, x0: s.x0, bx: Math.max(s.x1, s.x0 + 3), x1: 0 }); continue; }
+    ctx.fillStyle = s.st.fg; ctx.fillText(s.w.w, s.x0 + 2, rows[r]); last[r] = s.x0 + tw;
+    if (hits) hits.push({ w: s.w, x0: s.x0, bx: Math.max(s.x1, s.x0 + 3), x1: last[r], r });
+  }
+}
+function vline(ctx, v, t, color, w = 1.5, dash) {
+  const x = v.x(t); if (x < -2 || x > v.w + 2) return;
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = w; if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); ctx.restore();
+}
+function rangeAt(list, t) { return list.some(r => t >= r[0] && t < r[1]); }
+function drawOrig() {
+  const v = VO, ctx = v.ctx, tr = T.source; v.size();
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, v.w, H);
+  const ins = S.clips.filter(c => c.src === "source").map(c => [c.a, c.b]);
+  for (const [a, b] of USED) { ctx.fillStyle = C.usedTint; ctx.fillRect(v.x(a), RULER, (b - a) * v.pps, WAVE); }
+  for (const [a, b] of ins) { ctx.fillStyle = C.insTint; ctx.fillRect(v.x(a), RULER, (b - a) * v.pps, WAVE); }
+  for (const s of SUSPECTS) { ctx.fillStyle = C.susTint; ctx.fillRect(v.x(s.start - 0.05), RULER, (s.end - s.start + 0.1) * v.pps, WAVE); }
+  const sus = SUSPECTS.map(s => [s.start - 0.05, s.end + 0.05]);
+  wave(ctx, v, tr, Math.max(0, v.v0), Math.min(tr.duration, v.t(v.w)), Math.max(0, v.v0),
+       t => rangeAt(ins, t) ? C.amber : rangeAt(USED, t) ? C.mint : rangeAt(sus, t) ? C.rose : C.unused);
+  v.hits = [];
+  words(ctx, v, tr.words, 0, tr.duration, 0, w => w.suspect ? { bg: "rgba(255,92,138,.22)", fg: "#FF9AB8" }
+        : w.used ? { bg: "rgba(95,224,193,.12)", fg: "#D4F5EC" } : { bg: "rgba(255,255,255,.04)", fg: "#6B7480" }, v.hits);
+  ruler(ctx, v);
+  if (S.sel) {
+    ctx.fillStyle = C.sel; ctx.fillRect(v.x(S.sel.a), RULER, (S.sel.b - S.sel.a) * v.pps, H - RULER);
+    vline(ctx, v, S.sel.a, C.selEdge, 1.5); vline(ctx, v, S.sel.b, C.selEdge, 1.5);
+  }
+  if (S.locate !== null) vline(ctx, v, S.locate, C.amber, 1.5, [5, 4]);
+  vline(ctx, v, S.cursorO, C.cursor, 1.5); head(ctx, v, S.cursorO, C.cursor);
+  if (S.playO) { vline(ctx, v, audioO.currentTime, C.play, 2); head(ctx, v, audioO.currentTime, C.play); }
+  meta("o-info", [["length", fmt(tr.duration)], ["cursor", fmt(S.cursorO)],
+                  ["selection", S.sel ? `${(S.sel.b - S.sel.a).toFixed(2)} s` : "—", S.sel ? "sel" : ""],
+                  ["from", S.sel ? fmt(S.sel.a) : "—", S.sel ? "sel" : ""],
+                  ["pointer", S.hoverO !== null ? fmt(S.hoverO) : "—"]]);
+}
+function head(ctx, v, t, color) {    // small triangle on the ruler marking a cursor
+  const x = v.x(t); if (x < -6 || x > v.w + 6) return;
+  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x - 5, RULER - 8); ctx.lineTo(x + 5, RULER - 8); ctx.lineTo(x, RULER - 1); ctx.closePath(); ctx.fill();
+}
+function meta(id, rows) {
+  const el = $(id), html = rows.map(([k, v, c]) => `<div><dt>${k}</dt><dd class="${c || ""}">${v}</dd></div>`).join("");
+  if (el._h !== html) { el.innerHTML = html; el._h = html; }
+}
+function drawEdit() {
+  const v = VE, ctx = v.ctx, dur = total(); v.size(dur);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, v.w, H);
+  const pos = layout(), lo = v.v0, hi = v.t(v.w);
+  S.clips.forEach((c, i) => {
+    const p = pos[i]; if (p > hi || p + len(c) < lo) return;
+    const tr = T[c.src], ins = c.src === "source";
+    ctx.fillStyle = ins ? C.insTint : C.cleanTint; ctx.fillRect(v.x(p), RULER, len(c) * v.pps, WAVE);
+    wave(ctx, v, tr, Math.max(c.a, c.a + lo - p), Math.min(c.b, c.a + hi - p), Math.max(p, lo), ins ? C.amber : C.sky);
+    words(ctx, v, tr.words, c.a, c.b, p, () => ins ? { bg: "rgba(255,181,71,.24)", fg: "#FFD597" } : { bg: "rgba(125,183,245,.11)", fg: "#DCE8F5" });
+    ctx.textBaseline = "top";
+    if (!ins) {      // sentence ids where a sentence starts inside this clip
+      ctx.font = `10px ${MONO}`; ctx.fillStyle = C.sid;
+      for (const [sid, [s0]] of Object.entries(T.clean.sentences)) if (s0 >= c.a && s0 < c.b) { const x = v.x(p + s0 - c.a); if (x > -60 && x < v.w) ctx.fillText(sid, x + 3, RULER + 5); }
+    } else {
+      const x = v.x(p), w = len(c) * v.pps;
+      ctx.fillStyle = C.amber; ctx.fillRect(x, RULER, w, 3);
+      ctx.font = `700 10px ${MONO}`; ctx.fillStyle = "#FFC874";
+      if (w > 30) ctx.fillText(`+${len(c).toFixed(2)}s`, Math.max(x, 0) + 3, RULER + 6);
+    }
+    if (i === S.selClip) { ctx.strokeStyle = C.amber; ctx.lineWidth = 2; ctx.strokeRect(v.x(p) + 1, RULER + 1, len(c) * v.pps - 2, WAVE + WORDS - 3); }
+    if (i > 0) vline(ctx, v, p, ins || S.clips[i - 1].src === "source" ? "rgba(255,181,71,.7)" : "rgba(125,183,245,.35)", 1);
+  });
+  ruler(ctx, v);
+  if (S.eSel) { ctx.fillStyle = C.sel; ctx.fillRect(v.x(S.eSel.a), RULER, (S.eSel.b - S.eSel.a) * v.pps, H - RULER); }
+  vline(ctx, v, S.cursorE, C.cursor, 1.5); head(ctx, v, S.cursorE, C.cursor);
+  if (S.playE) { vline(ctx, v, playheadE(), C.play, 2); head(ctx, v, playheadE(), C.play); }
+  if (S.drop) {
+    vline(ctx, v, S.drop.t, C.amber, 3);
+    const x = clamp(v.x(S.drop.t) + 8, 4, v.w - 150);
+    ctx.font = `700 11px ${MONO}`; ctx.textBaseline = "middle";
+    const tw = ctx.measureText(S.drop.label).width;
+    ctx.fillStyle = C.amber; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, RULER + WAVE - 26, tw + 14, 20, 10) : ctx.rect(x, RULER + WAVE - 26, tw + 14, 20); ctx.fill();
+    ctx.fillStyle = "#0E1012"; ctx.fillText(S.drop.label, x + 7, RULER + WAVE - 16);
+  }
+  const n = S.clips.filter(c => c.src === "source").length, added = dur - T.clean.duration;
+  meta("e-info", [["length", fmt(dur)], ["clean.wav", fmt(T.clean.duration)],
+                  ["inserts", n ? `${n} · ${added >= 0 ? "+" : ""}${added.toFixed(2)} s` : "none", n ? "hl" : ""],
+                  ["cursor", fmt(S.cursorE)],
+                  ["pointer", S.hoverE !== null ? fmt(S.hoverE) : "—"],
+                  ["≈ original", S.hoverE !== null ? fmt(editedToSource(S.hoverE) ?? 0) : "—"]]);
+}
+
+// overview strips: the whole recording / the whole edit, with the visible window; click or drag to scroll there
+function overview(cv, v, dur, paint) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = 30;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#101316"; ctx.fillRect(0, 0, w, h);
+  const k = w / Math.max(dur, 0.001);
+  paint(ctx, k, w, h);
+  const a = v.v0 * k, b = Math.min(w, v.t(v.w) * k);
+  ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(a, 0, b - a, h);
+  ctx.strokeStyle = "rgba(232,236,239,.55)"; ctx.lineWidth = 1; ctx.strokeRect(a + .5, .5, Math.max(2, b - a - 1), h - 1);
+}
+function ovPeaks(ctx, tr, a, b, x0, k, h, color) {
+  const x1 = x0 + (b - a) * k; ctx.fillStyle = color;
+  for (let px = Math.floor(x0); px < x1; px++) {
+    const t0 = a + (px - x0) / k, f0 = Math.max(0, Math.floor(t0 / FRAME)), f1 = Math.min(tr.peaks.length, Math.ceil((t0 + 1 / k) / FRAME));
+    let m = 0; for (let f = f0; f < f1; f++) if (tr.peaks[f] > m) m = tr.peaks[f];
+    const hh = Math.max(.5, m / 255 * (h / 2 - 3)); ctx.fillRect(px, h / 2 - hh, 1, hh * 2);
+  }
+}
+function drawOverviews() {
+  const tr = T.source, ins = S.clips.filter(c => c.src === "source");
+  overview($("o-ov"), VO, tr.duration, (ctx, k, w, h) => {
+    for (const [a, b] of USED) { ctx.fillStyle = "rgba(95,224,193,.12)"; ctx.fillRect(a * k, 0, Math.max(1, (b - a) * k), h); }
+    ovPeaks(ctx, tr, 0, tr.duration, 0, k, h, "#4A525C");
+    for (const c of ins) { ctx.fillStyle = C.amber; ctx.fillRect(c.a * k, h - 4, Math.max(2, len(c) * k), 4); }
+    for (const s of SUSPECTS) { ctx.fillStyle = C.rose; ctx.fillRect(s.start * k - 1, 0, 2.5, 6); }
+    if (S.sel) { ctx.fillStyle = C.selEdge; ctx.fillRect(S.sel.a * k, 0, Math.max(2, (S.sel.b - S.sel.a) * k), 3); }
+    ctx.fillStyle = C.cursor; ctx.fillRect(S.cursorO * k, 0, 1.5, h);
+  });
+  const pos = layout(), dur = total();
+  overview($("e-ov"), VE, dur, (ctx, k, w, h) => {
+    S.clips.forEach((c, i) => ovPeaks(ctx, T[c.src], c.a, c.b, pos[i] * k, k, h, c.src === "source" ? C.amber : "#4F6F90"));
+    S.clips.forEach((c, i) => { if (c.src === "source") { ctx.fillStyle = C.amber; ctx.fillRect(pos[i] * k - 1, 0, Math.max(2.5, len(c) * k), 5); } });
+    ctx.fillStyle = C.cursor; ctx.fillRect(S.cursorE * k, 0, 1.5, h);
+  });
+}
+function bindOverview(cv, v, getDur) {
+  const go = e => { const r = cv.getBoundingClientRect(), t = (e.clientX - r.left) / r.width * getDur(); v.sc.scrollLeft = Math.max(0, t * v.pps - v.w / 2); draw(); };
+  cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); go(e); cv.onpointermove = go; });
+  cv.addEventListener("pointerup", () => { cv.onpointermove = null; });
+}
+function updateTC() {
+  const live = S.playE ? "playing clean edit" : S.playO ? "playing original" : "clean edit · cursor";
+  $("tc").textContent = fmt(S.playO ? audioO.currentTime : S.playE ? playheadE() : S.cursorE);
+  $("tc-total").textContent = fmt(S.playO ? T.source.duration : total());
+  $("tc-label").textContent = live; $("tc-label").classList.toggle("live", !!(S.playE || S.playO));
+}
+let raf = 0;
+function draw() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawOrig(); drawEdit(); drawOverviews(); updateTC(); }); }
+
+// ------------------------------------------------------------------ change handling, autosave
+let saveTimer = 0;
+function changed() {
+  S.selClip = Math.min(S.selClip, S.clips.length - 1);
+  computeSuspects(); renderInserts();
+  $("undo").disabled = !S.undo.length; $("redo").disabled = !S.redo.length;
+  clearTimeout(saveTimer); status("unsaved…");
+  saveTimer = setTimeout(save, 600);
+  stopE(); draw();
+}
+async function post(url) {
+  if (S.stale) throw new Error("stale");
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clips: S.clips, rev: S.rev }) });
+  const j = await r.json();
+  if (r.status === 409) { staleNote(); throw new Error("stale"); }
+  if (!r.ok) throw new Error(j.error);
+  S.rev = j.rev; return j;
+}
+function staleNote() {      // another tab (or a render elsewhere) saved newer edits: never overwrite them from here
+  S.stale = true; clearTimeout(saveTimer); status("not saved: stale tab");
+  const n = $("note"); n.style.display = "block";
+  n.innerHTML = "These edits were changed in another tab or window, so this tab stopped saving. <button id=\"reload\">Reload the latest edits</button>";
+  $("reload").onclick = () => location.reload();
+}
+async function save() {
+  try { await post("api/save"); status("saved"); } catch (err) { if (err.message !== "stale") status("save failed: " + err.message); }
+}
+function status(s) {
+  $("status").textContent = s;
+  $("dot").className = /fail|error/.test(s) ? "err" : /saved|ready|rendered|loaded/.test(s) ? "ok" : "busy";
+}
+let toastTimer = 0;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
+function renderInserts() {
+  const ul = $("inserts"), pos = layout(); ul.innerHTML = "";
+  const n = S.clips.filter(c => c.src === "source").length;
+  $("ins-count").textContent = n ? `${n} insert${n > 1 ? "s" : ""}` : "";
+  if (!n) { ul.innerHTML = `<li class="empty">No inserts yet. Drag a selection from the original onto the clean edit.</li>`; return; }
+  S.clips.forEach((c, i) => {
+    if (c.src !== "source") return;
+    const ws = T.source.words.filter(w => w.start >= c.a - 0.01 && w.end <= c.b + 0.05).map(w => w.w).join(" ");
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="at">+ ${fmt(pos[i])}</span><span class="src">from ${fmt(c.a)} · ${len(c).toFixed(2)} s</span><span class="words"></span>`;
+    li.querySelector(".words").textContent = ws ? `“${ws}”` : "(no transcribed words)";
+    const play = Object.assign(document.createElement("button"), { textContent: "▶ Hear in context" });
+    play.onclick = () => { S.selClip = i; S.cursorE = Math.max(0, pos[i] - 2); VE.show(pos[i]); playE(S.cursorE, pos[i] + len(c) + 2); };
+    const del = Object.assign(document.createElement("button"), { textContent: "Remove" });
+    del.onclick = () => { const cl = S.clips.slice(); cl.splice(i, 1); S.selClip = -1; commit(cl); };
+    li.append(play, del); ul.append(li);
+  });
+}
+
+// ------------------------------------------------------------------ playback: original (HTML audio, Range requests)
+const audioO = new Audio(); audioO.preload = "auto"; let stopO = Infinity;
+function playO(from, to = Infinity) {
+  stopE();
+  const go = () => { audioO.currentTime = from; stopO = to; audioO.play(); S.playO = true; $("o-play").classList.add("on"); $("o-play").textContent = "❚❚ Original"; tick(); };
+  if (audioO.readyState >= 1) go(); else audioO.addEventListener("loadedmetadata", go, { once: true });
+}
+function stopOrig() { if (!S.playO) return; audioO.pause(); S.playO = false; $("o-play").classList.remove("on"); $("o-play").textContent = "▶ Original"; draw(); }
+
+// ------------------------------------------------------------------ playback: the edit (Web Audio, gapless)
+let AC = null, cleanBuf = null; const srcBufs = new Map();
+async function buffer(c) {
+  if (c.src === "clean") {
+    if (!cleanBuf) { status("loading clean audio…"); cleanBuf = await fetchBuf(`api/slice?src=clean&a=0&b=${T.clean.duration}`); status("ready"); }
+    return { buf: cleanBuf, off: c.a };
+  }
+  const k = `${c.a}:${c.b}`;
+  if (!srcBufs.has(k)) srcBufs.set(k, await fetchBuf(`api/slice?src=source&a=${c.a}&b=${c.b}`));
+  return { buf: srcBufs.get(k), off: 0 };
+}
+async function fetchBuf(url) { const r = await fetch(url); return AC.decodeAudioData(await r.arrayBuffer()); }
+function playheadE() { return S.playE ? S.playE.from + (AC.currentTime - S.playE.t0) : S.cursorE; }
+async function playE(from, to = Infinity) {
+  stopOrig(); stopE();
+  if (!AC) AC = new AudioContext({ sampleRate: T.clean.sr });
+  if (AC.state === "suspended") await AC.resume();
+  const { i: i0, inner } = at(from), pos = layout(), end = Math.min(total(), to);
+  const plan = [];
+  for (let i = i0; i < S.clips.length && pos[i] < end; i++) plan.push({ c: S.clips[i], ...(await buffer(S.clips[i])), pos: pos[i] });
+  const t0 = AC.currentTime + 0.06, nodes = [];
+  for (const p of plan) {
+    const skip = Math.max(0, from - p.pos), d = Math.min(len(p.c), end - p.pos) - skip;
+    if (d <= 0) continue;
+    const when = t0 + p.pos + skip - from, g = AC.createGain(), n = AC.createBufferSource();
+    n.buffer = p.buf; n.connect(g).connect(AC.destination);
+    g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(1, when + 0.005);
+    g.gain.setValueAtTime(1, when + d - 0.005); g.gain.linearRampToValueAtTime(0, when + d);
+    n.start(when, p.off + skip, d); nodes.push(n);
+  }
+  S.playE = { from, t0, end, nodes };
+  $("e-play").classList.add("on"); $("e-play").textContent = "❚❚"; tick();
+}
+function stopE() {
+  if (!S.playE) return;
+  for (const n of S.playE.nodes) try { n.stop(); } catch (e) {}
+  S.playE = null; $("e-play").classList.remove("on"); $("e-play").textContent = "▶"; draw();
+}
+function tick() {
+  if (S.playE) {
+    const t = playheadE();
+    if (t >= S.playE.end) { stopE(); return; }
+    VE.show(t, false);
+    const s = editedToSource(t); if (s !== null) S.locate = s;
+  }
+  if (S.playO) { if (audioO.currentTime >= stopO || audioO.ended) stopOrig(); else VO.show(audioO.currentTime, false); }
+  draw();
+  if (S.playE || S.playO) requestAnimationFrame(tick);
+}
+
+// ------------------------------------------------------------------ pointer interaction
+function wordAt(x, y) {         // the word whose box or label is under the pointer (labels drawn last win)
+  if (y < RULER + WAVE) return null;
+  const row = y < RULER + WAVE + WORDS / 2 ? 0 : 1;      // a label only counts in its own row; a box counts in both
+  const hit = (VO.hits || []).filter(h => x >= h.x0 && (x <= h.bx || (h.r === row && x <= h.x1)));
+  return hit.length ? hit[hit.length - 1].w : null;
+}
+function dropTarget(e, freeze) {   // where a drop on the edit timeline would go
+  if (!VE.over(e)) return null;
+  let t = clamp(VE.t(VE.localX(e)), 0, total());
+  const { i, pos, inner } = at(t), c = S.clips[i];
+  if (c && c.src === "source" && c !== freeze) t = inner < len(c) / 2 ? pos : pos + len(c);       // never split an inserted clip
+  else if (c && !e.altKey) {          // snap to a pause in the clean audio, or to a clip edge nearby
+    const edges = [pos, pos + len(c)].filter(x => Math.abs(x - t) * VE.pps < 10);
+    t = edges.length ? edges[0] : pos + snap(T[c.src], c.a + inner, 0) - c.a;
+  }
+  return { t: clamp(t, 0, total()), label: `insert here · ${fmt(t)}` };
+}
+function onDown(e, view) {
+  if (e.button !== 0) return;
+  const x = view.localX(e), y = view.localY(e), t = view.t(x);
+  S.drag = { view, x0: e.clientX, y0: e.clientY, t0: t, moved: false, shift: e.shiftKey, y, lx: x };
+  if (view === VO) {
+    if (S.sel && t >= S.sel.a && t <= S.sel.b && !e.shiftKey) S.drag.type = "oMove";
+    else S.drag.type = "oSel";
+  } else {
+    const pos = layout();
+    for (let i = 0; i < S.clips.length; i++) {        // clip edges: inserted clips first
+      for (const [edge, et] of [["a", pos[i]], ["b", pos[i] + len(S.clips[i])]]) {
+        if (Math.abs(VE.x(et) - x) < 6 && (S.clips[i].src === "source" || !S.drag.type)) {
+          if (S.clips[i].src === "source" || !S.drag.type) Object.assign(S.drag, { type: "trim", i, edge, orig: { ...S.clips[i] }, snapshot: JSON.stringify(S.clips) });
+        }
+      }
+    }
+    if (!S.drag.type) {
+      const { i } = at(t);
+      if (S.clips[i] && S.clips[i].src === "source" && t <= total()) Object.assign(S.drag, { type: "eMove", i });
+      else S.drag.type = "eSel";
+    }
+  }
+  e.preventDefault();
+}
+function onMove(e) {
+  const v = VO.over(e) && !VE.over(e) ? VO : VE.over(e) ? VE : null;
+  S.hoverO = v === VO ? VO.t(VO.localX(e)) : null; S.hoverE = v === VE ? clamp(VE.t(VE.localX(e)), 0, total()) : null;
+  const d = S.drag;
+  if (!d) {
+    if (v === VE) {
+      const x = VE.localX(e), pos = layout();
+      const edge = S.clips.some((c, i) => c.src === "source" && (Math.abs(VE.x(pos[i]) - x) < 6 || Math.abs(VE.x(pos[i] + len(c)) - x) < 6));
+      VE.cv.style.cursor = edge ? "ew-resize" : S.clips[at(S.hoverE).i]?.src === "source" ? "grab" : "text";
+    } else if (v === VO) VO.cv.style.cursor = S.sel && S.hoverO >= S.sel.a && S.hoverO <= S.sel.b ? "grab" : "text";
+    draw(); return;
+  }
+  if (Math.abs(e.clientX - d.x0) + Math.abs(e.clientY - d.y0) > 3) d.moved = true;
+  if (!d.moved) return;
+  const t = d.view.t(d.view.localX(e));
+  if (d.type === "oSel") {
+    let a = Math.min(d.t0, t), b = Math.max(d.t0, t);
+    if (!e.altKey) { a = snap(T.source, a, -1); b = snap(T.source, b, 1); }
+    S.sel = { a: clamp(a, 0, T.source.duration), b: clamp(b, 0, T.source.duration) }; VO.show(t, false);
+  } else if (d.type === "oMove" || d.type === "eMove") {
+    const g = $("ghost"); g.style.display = "block"; g.style.left = e.clientX + 12 + "px"; g.style.top = e.clientY + 12 + "px";
+    const c = d.type === "oMove" ? S.sel : S.clips[d.i];
+    S.drop = dropTarget(e, d.type === "eMove" ? S.clips[d.i] : null);
+    g.textContent = (S.drop ? "drop to insert " : "drag onto the clean timeline · ") + `${(c.b - c.a).toFixed(2)} s`;
+  } else if (d.type === "eSel") {
+    const tt = clamp(t, 0, total());
+    S.eSel = { a: Math.min(d.t0, tt), b: Math.max(d.t0, tt) }; S.selClip = -1;
+  } else if (d.type === "trim") {
+    const c = S.clips[d.i], o = d.orig, tr = T[c.src], dt = (e.clientX - d.x0) / VE.pps;
+    if (d.edge === "a") { let a = clamp(o.a + dt, 0, o.b - 0.05); if (!e.altKey) a = snap(tr, a, -1, 0.15); c.a = Math.min(a, o.b - 0.05); }
+    else { let b = clamp(o.b + dt, o.a + 0.05, tr.duration); if (!e.altKey) b = snap(tr, b, 1, 0.15); c.b = Math.max(b, o.a + 0.05); }
+    S.selClip = d.i; computeSuspects();
+  }
+  draw();
+}
+function onUp(e) {
+  const d = S.drag; if (!d) return; S.drag = null; $("ghost").style.display = "none";
+  const t = d.view.t(d.view.localX(e));
+  if (d.type === "oSel" && !d.moved) {
+    const w = wordAt(d.lx, d.y);
+    if (w) {
+      // word times from the speech model run up to ~0.1 s early or short: pad, then snap to a pause if one is near
+      let a = snap(T.source, Math.max(0, w.start - 0.03), -1), b = snap(T.source, w.end + 0.08, 1);
+      if (d.shift && S.sel) { a = Math.min(a, S.sel.a); b = Math.max(b, S.sel.b); }
+      S.sel = { a, b };
+    } else if (d.shift && S.sel) { S.sel = { a: Math.min(S.sel.a, d.t0), b: Math.max(S.sel.b, d.t0) }; }
+    else { S.sel = null; S.cursorO = clamp(d.t0, 0, T.source.duration); if (S.playO) playO(S.cursorO); }
+  } else if (d.type === "oMove") {
+    if (d.moved && S.drop) {
+      const k = at(S.drop.t), cl = insertAt(S.drop.t, { src: "source", a: S.sel.a, b: S.sel.b });
+      const at0 = S.drop.t; S.drop = null; commit(cl);
+      S.selClip = S.clips.findIndex((c, i) => c.src === "source" && Math.abs(layout()[i] - at0) < 1e-3);
+      S.cursorE = Math.max(0, at0 - 1.5); VE.show(at0); status("saved"); toast("Inserted · press Space to hear it");
+    } else if (!d.moved) { S.cursorO = clamp(d.t0, 0, T.source.duration); }
+  } else if (d.type === "eMove") {
+    if (d.moved && S.drop) {
+      const c = S.clips[d.i], pos = layout()[d.i];
+      let t2 = S.drop.t; if (t2 > pos) t2 -= len(c);
+      const rest = S.clips.slice(); rest.splice(d.i, 1);
+      const saved = S.clips; S.clips = normalize(rest);
+      const cl = insertAt(clamp(t2, 0, total()), { ...c }); S.clips = saved; S.drop = null; commit(cl);
+      S.selClip = S.clips.findIndex((x, i) => x.src === "source" && x.a === c.a && x.b === c.b);
+    } else { S.selClip = d.i; S.eSel = null; S.cursorE = clamp(d.t0, 0, total()); locate(S.cursorE); }
+  } else if (d.type === "eSel") {
+    if (!d.moved) { S.eSel = null; S.selClip = -1; S.cursorE = clamp(d.t0, 0, total()); locate(S.cursorE); if (S.playE) playE(S.cursorE); }
+  } else if (d.type === "trim") {
+    if (d.moved) { const now = S.clips; S.clips = JSON.parse(d.snapshot); commit(now); }
+  }
+  S.drop = null; draw();
+}
+function locate(t) {
+  const s = editedToSource(t); if (s === null) return;
+  S.locate = s; S.cursorO = clamp(s, 0, T.source.duration); VO.show(s);
+}
+function jumpSuspect(dir) {
+  const t = S.cursorO + dir * 0.05;
+  const s = dir > 0 ? SUSPECTS.find(x => x.start > t) : [...SUSPECTS].reverse().find(x => x.start < t - 0.1);
+  if (!s) { status(dir > 0 ? "no more suspects after the cursor" : "no suspects before the cursor"); return; }
+  S.cursorO = s.start; S.sel = { a: snap(T.source, s.start, -1), b: snap(T.source, s.end, 1) }; VO.show(s.start);
+  // and put the clean cursor where that spot is in the edit: right after the nearest kept range that ends before it
+  const pl = PLACE.filter(p => p.out && p.src[1] <= s.start + 0.05).pop() || PLACE.find(p => p.out);
+  if (pl) { const pos = layout(); const ci = S.clips.findIndex(c => c.src === "clean" && pl.out[1] >= c.a && pl.out[1] <= c.b);
+    if (ci >= 0) { S.cursorE = pos[ci] + (pl.out[1] - S.clips[ci].a); VE.show(S.cursorE); } }
+  draw();
+}
+
+// ------------------------------------------------------------------ keys and buttons
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea")) return;
+  const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (k === " ") { e.preventDefault(); if (e.shiftKey) S.playO ? stopOrig() : playO(S.sel ? S.sel.a : S.cursorO, S.sel ? S.sel.b : Infinity); else S.playE ? stopE() : playE(S.cursorE); }
+  else if (mod && k === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (mod && (k === "y" || (k === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+  else if (mod && k === "s") { e.preventDefault(); save(); }
+  else if (k === "delete" || k === "backspace") {
+    if (S.selClip >= 0) { const cl = S.clips.slice(); cl.splice(S.selClip, 1); S.selClip = -1; commit(cl); }
+    else if (S.eSel && S.eSel.b - S.eSel.a > 0.01) { const r = S.eSel; S.eSel = null; S.cursorE = r.a; commit(deleteRange(r.a, r.b)); }
+  }
+  else if (k === "i" && !mod) insertSelection();
+  else if (k === "escape") { S.sel = null; S.eSel = null; S.selClip = -1; $("help").classList.remove("open"); draw(); }
+  else if (k === "=" || k === "+") setZoom(VO.pps * 1.25);
+  else if (k === "-") setZoom(VO.pps * 0.8);
+});
+function insertSelection() {
+  if (!S.sel) return;
+  const at0 = S.cursorE; commit(insertAt(at0, { src: "source", a: S.sel.a, b: S.sel.b }));
+  S.selClip = S.clips.findIndex((c, i) => c.src === "source" && Math.abs(layout()[i] - at0) < 1e-3); draw();
+}
+function undo() { if (!S.undo.length) return; S.redo.push(JSON.stringify(S.clips)); S.clips = JSON.parse(S.undo.pop()); changed(); }
+function redo() { if (!S.redo.length) return; S.undo.push(JSON.stringify(S.clips)); S.clips = JSON.parse(S.redo.pop()); changed(); }
+
+async function render() {
+  stopE(); stopOrig(); clearTimeout(saveTimer);
+  $("render").disabled = true; status("rendering…");
+  try {
+    const j = await post("api/render");
+    status("rendered"); toast(`Rendered clean_edited.wav · ${fmt(j.duration)} · ${j.inserted} insert${j.inserted === 1 ? "" : "s"}`);
+    $("rendered").style.display = "block";
+    $("r-info").textContent = `${j.path} · ${fmt(j.duration)} · ${j.inserted} insert(s)`;
+    $("r-audio").src = `${j.file}?v=${Date.now()}`;
+  } catch (err) { if (err.message !== "stale") status("render failed: " + err.message); }
+  $("render").disabled = false;
+}
+
+// ------------------------------------------------------------------ start
+(async () => {
+  const info = await (await fetch("api/project")).json();
+  FRAME = info.frame; PLACE = info.placement; T = info.tracks; S.rev = info.rev;
+  for (const k of ["source", "clean"]) { T[k].peaks = b64(T[k].peaks); T[k].quiet = b64(T[k].quiet); }
+  $("pname").textContent = info.name; document.title = `Voiceover editor — ${info.name}`;
+  if (info.edits_note) { $("note").style.display = "block"; $("note").textContent = info.edits_note; }
+  S.clips = normalize(info.edits || [{ src: "clean", a: 0, b: T.clean.duration }]);
+  USED = usedRanges();
+  audioO.src = "work/source.wav";
+  VO = new View("o", T.source.duration); VE = new View("e", total());
+  VO.cv.addEventListener("pointerdown", e => onDown(e, VO)); VE.cv.addEventListener("pointerdown", e => onDown(e, VE));
+  document.addEventListener("pointermove", onMove); document.addEventListener("pointerup", onUp);
+  $("zoom").addEventListener("input", e => setZoom(2 * Math.pow(300, e.target.value / 100)));
+  $("o-play").onclick = () => S.playO ? stopOrig() : playO(S.sel ? S.sel.a : S.cursorO, S.sel ? S.sel.b : Infinity);
+  $("e-play").onclick = () => S.playE ? stopE() : playE(S.cursorE);
+  $("o-insert").onclick = insertSelection;
+  $("o-next").onclick = () => jumpSuspect(1); $("o-prev").onclick = () => jumpSuspect(-1);
+  $("undo").onclick = undo; $("redo").onclick = redo; $("render").onclick = render;
+  $("help-btn").onclick = () => $("help").classList.toggle("open");
+  bindOverview($("o-ov"), VO, () => T.source.duration); bindOverview($("e-ov"), VE, total);
+  if (document.fonts) document.fonts.ready.then(draw);
+  $("reset").onclick = () => { if (confirm("Drop every edit and go back to clean.wav as it is?")) { S.selClip = -1; commit([{ src: "clean", a: 0, b: T.clean.duration }]); } };
+  if (info.rendered) { $("rendered").style.display = "block"; $("r-info").textContent = "clean_edited.wav (from an earlier render)"; $("r-audio").src = "clean_edited.wav"; }
+  window.addEventListener("resize", draw);
+  setInterval(() => { $("o-insert").disabled = !S.sel; }, 200);
+  computeSuspects(); renderInserts();
+  $("undo").disabled = true; $("redo").disabled = true;
+  setZoom(110);                        // wide enough that two label rows fit nearly every word
+  status(info.edits ? "loaded saved edits" : "ready");
+})();
+</script>
+</body>
+</html>
