@@ -17,7 +17,7 @@ from urllib.parse import urlparse, parse_qs
 import numpy as np
 import soundfile as sf
 from common import log, read_json, write_json
-from serve import RangeHandler, Server
+from serve import RangeHandler, open_server
 from audio import Snapper, FRAME, join
 
 PAGE = Path(__file__).resolve().parent / "editor.html"
@@ -30,15 +30,16 @@ class Project:
     def __init__(self, P):
         self.P, self.W = P, P["work"]
         self.files = dict(clean=P["clean"], source=self.W / "source.wav")
-        self.audio, self._info = {}, None
+        self.audio, self.loaded, self._info = {}, {}, None
         for k, path in self.files.items():
             if not path.exists():
                 raise SystemExit(f"missing {path}: run `vo apply` first")
 
     def load(self, key):
-        if key not in self.audio:
+        mtime = self.files[key].stat().st_mtime
+        if self.loaded.get(key) != mtime:             # also picks up a clean.wav re-applied while the editor is running
             x, sr = sf.read(self.files[key], dtype="float32")
-            self.audio[key] = (x if x.ndim == 1 else x.mean(axis=1), sr)
+            self.audio[key], self.loaded[key], self._info = (x if x.ndim == 1 else x.mean(axis=1), sr), mtime, None
         return self.audio[key]
 
     def stamp(self):
@@ -46,6 +47,8 @@ class Project:
         return dict(clean_size=st.st_size, clean_mtime=round(st.st_mtime, 3))
 
     def info(self):
+        for key in self.files:
+            self.load(key)
         if self._info is None:
             t0 = time.time()
             tracks = {}
@@ -185,11 +188,12 @@ class EditorHandler(RangeHandler):
         except ValueError as e:
             return self._json(dict(error=str(e)), 400)
 
-def edit(P, port=8802):
+def edit(P, port=None):
     EditorHandler.project = Project(P)
     handler = functools.partial(EditorHandler, directory=str(P["root"]))
-    with Server(("127.0.0.1", port), handler) as httpd:
-        log.info("voiceover editor for %s at http://127.0.0.1:%d/ (Ctrl+C to stop)", P["root"], port)
+    with open_server(handler, port, 8802) as httpd:
+        print(f"VOICEOVER EDITOR: http://127.0.0.1:{httpd.server_address[1]}/", flush=True)
+        log.info("voiceover editor for %s (Ctrl+C to stop)", P["root"])
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

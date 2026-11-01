@@ -110,13 +110,17 @@ Missing / needs re-recording: <ids or "none">
 Warnings: <or "none">
 
 NEXT STEPS
-1. Review: open <project>/review.html (or run `vo serve <project>` and open http://127.0.0.1:8801/review.html).
+1. Review: open <project>/review.html (or run `vo serve <project>`, which prints its URL).
    It has the clean voiceover, every kept line with its reason, and everything dropped, each playable.
 2. Changes? Give notes in plain words (e.g. "S4.P2.1: use the earlier take"). They go back to this same agent.
-3. A word missing that the speech model didn't catch? `vo edit <project>` opens an editor (http://127.0.0.1:8802/) where you
-   drag it from the original into the clean timeline; Render writes <project>/clean_edited.wav.
+3. A word missing that the speech model didn't catch? The voiceover editor lets you drag it from the original into the
+   clean timeline; Render writes <project>/clean_edited.wav. <URL if you started it; otherwise "`vo edit <project>` prints its URL">
 4. Approved? The clean voiceover is <project>/clean.wav (48 kHz, 24-bit WAV, no EQ or loudness processing).
 ```
+
+**As the main session,** start `vo edit <project>` in the background before reporting, read the `VOICEOVER EDITOR: <url>`
+line it prints, and put that URL in step 3. Start it only once; it picks up a re-applied `clean.wav`. **As a subagent,**
+don't start it: the main session does.
 
 ## Don'ts
 

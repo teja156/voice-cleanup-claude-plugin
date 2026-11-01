@@ -228,7 +228,7 @@ def cmd_apply(a, P):
     print(f"\nCLEAN VOICEOVER: {P['clean']} ({res['duration'] / 60:.1f} min, from {res['source_duration'] / 60:.1f} min raw)")
     for w in res["warnings"]:
         print(f"  ⚠ {w}")
-    print(f"REVIEW PAGE: {page}  (vo serve {P['root']} → http://127.0.0.1:{a.port if hasattr(a, 'port') else 8801}/review.html)")
+    print(f"REVIEW PAGE: {page}  (or `vo serve {P['root']}`, which prints its URL)")
 
 def cmd_serve(a, P):
     from serve import serve
@@ -264,10 +264,10 @@ def main():
         q = sub.add_parser(name); q.add_argument("project"); q.add_argument("start", type=float); q.add_argument("end", type=float)
     for name in ("draft", "validate"):
         sub.add_parser(name).add_argument("project")
-    q = sub.add_parser("apply"); q.add_argument("project"); q.add_argument("--port", type=int, default=8801, help=argparse.SUPPRESS)
-    q = sub.add_parser("serve"); q.add_argument("project"); q.add_argument("--port", type=int, default=8801)
+    q = sub.add_parser("apply"); q.add_argument("project")
+    q = sub.add_parser("serve"); q.add_argument("project"); q.add_argument("--port", type=int)
     q = sub.add_parser("edit", help="open the voiceover editor (original + clean timelines)")
-    q.add_argument("project"); q.add_argument("--port", type=int, default=8802)
+    q.add_argument("project"); q.add_argument("--port", type=int)
     a = ap.parse_args(); setup_logging(a.verbose)
     P = project_paths(a.project) if hasattr(a, "project") else None
     if a.cmd not in ("setup", "prepare") and not P["script"].exists():

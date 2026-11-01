@@ -62,12 +62,27 @@ class RangeHandler(http.server.SimpleHTTPRequestHandler):
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    allow_reuse_address = os.name != "nt"      # on Windows this flag lets two servers share a port, so a taken port looks free
 
-def serve(root, port=8801):
+def open_server(handler, port, default):
+    """Bind 127.0.0.1: exactly `port` if one was asked for, else `default` or the next free port."""
+    if port is not None:
+        try:
+            return Server(("127.0.0.1", port), handler)
+        except OSError as e:
+            raise SystemExit(f"port {port} is not available ({e}): pick another, or leave out --port to find a free one")
+    for p in range(default, default + 50):
+        try:
+            return Server(("127.0.0.1", p), handler)
+        except OSError:
+            pass
+    return Server(("127.0.0.1", 0), handler)
+
+def serve(root, port=None):
     handler = functools.partial(RangeHandler, directory=str(root))
-    with Server(("127.0.0.1", port), handler) as httpd:
-        log(f"serving {root} at http://127.0.0.1:{port}/review.html (Ctrl+C to stop)")
+    with open_server(handler, port, 8801) as httpd:
+        print(f"REVIEW PAGE: http://127.0.0.1:{httpd.server_address[1]}/review.html", flush=True)
+        log(f"serving {root} (Ctrl+C to stop)")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

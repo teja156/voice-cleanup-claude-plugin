@@ -124,7 +124,7 @@ Open `<project>/review.html` in a browser. It has:
 On a remote machine, serve it and forward the port (seeking in long WAV files needs this server):
 
 ```
-~/voiceover-cleanup/scripts/vo serve <project>        # http://127.0.0.1:8801/review.html
+~/voiceover-cleanup/scripts/vo serve <project>        # prints the URL (port 8801, or the next free one)
 ```
 
 ### 4. Revise or approve
@@ -141,7 +141,7 @@ paragraph in section 4. The review page shows the id next to every line.
 The speech model sometimes misses a word, so the cut leaves it out. Open the editor:
 
 ```
-~/voiceover-cleanup/scripts/vo edit <project>         # http://127.0.0.1:8802/
+~/voiceover-cleanup/scripts/vo edit <project>         # prints the URL (port 8802, or the next free one)
 ```
 
 It shows two timelines, the **original** recording and the **clean** voiceover, with waveforms and words. Green parts of

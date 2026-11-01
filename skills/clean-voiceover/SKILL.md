@@ -50,6 +50,11 @@ Plugin data: ${CLAUDE_PLUGIN_DATA}
    over a forwarded port).
 2. If the human gives notes, send them to the **same** agent (resume it with SendMessage; don't start a new one), then
    show its new report.
-3. When the human approves, tell them the final file is `<project>/clean.wav`. Nothing else needs to run.
+3. After the first report, start the voiceover editor in the background from this session (a background process started
+   by the agent may not outlive it), using the prefix above: `vo edit <project>`. It picks a free port and prints
+   `VOICEOVER EDITOR: <url>`. Read that line from the command's output and give the human the exact URL, saying it's for
+   adding back any words the cut missed. Start it only once: it picks up a re-applied `clean.wav`, so after a revision
+   just tell the human to reload the page.
+4. When the human approves, tell them the final file is `<project>/clean.wav`. If they rendered in the editor, it's `<project>/clean_edited.wav`.
 
 Don't make cut decisions in this session, and don't edit `work/cuts.json` here: that's the agent's job.
