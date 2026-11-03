@@ -23,30 +23,23 @@ sentence, in script order, with even pauses, plus a **review page** where you ca
 
 ## Install
 
-The repo is both a plugin and a one-plugin marketplace.
+The plugin is published through [teja-claude-marketplace](https://github.com/teja156/teja-claude-marketplace).
 
 **From GitHub:** inside Claude Code, run:
 
 ```
-/plugin marketplace add teja156/voice-cleanup-claude-plugin
-/plugin install voiceover-cleanup@voiceover-cleanup
+/plugin marketplace add teja156/teja-claude-marketplace
+/plugin install voiceover-cleanup@teja-claude-marketplace
 ```
 
-**From a local clone:**
+Shell equivalents: `claude plugin marketplace add teja156/teja-claude-marketplace` and
+`claude plugin install voiceover-cleanup@teja-claude-marketplace`.
+
+**From a local clone** (for development):
 
 ```
 git clone https://github.com/teja156/voice-cleanup-claude-plugin.git ~/voiceover-cleanup
 ```
-
-Then, inside Claude Code:
-
-```
-/plugin marketplace add ~/voiceover-cleanup
-/plugin install voiceover-cleanup@voiceover-cleanup
-```
-
-Shell equivalents: `claude plugin marketplace add <path-or-owner/repo>` and
-`claude plugin install voiceover-cleanup@voiceover-cleanup`.
 
 **Try it without installing:** `claude --plugin-dir ~/voiceover-cleanup`
 
