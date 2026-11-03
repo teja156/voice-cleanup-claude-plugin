@@ -1,6 +1,6 @@
 {
   "name": "voiceover-cleanup",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Clean up your voiceover by cutting out the outtakes: record a script with as many retakes as you need, and get back one take of every sentence (the last complete one by default, checked by Claude), with false starts, fillers and asides removed. Local speech recognition; you approve every cut.",
   "author": { "name": "Teja Swaroop Pothala" },
   "repository": "https://github.com/teja156/voice-cleanup-claude-plugin",

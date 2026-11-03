@@ -1,6 +1,9 @@
 # Runtime dependencies (installed by scripts/vo into its own venv on first run). Pinned to the tested versions.
 onnx-asr==0.12.0
-onnxruntime==1.23.2
 huggingface_hub==2.2.0
-numpy==2.2.6
 soundfile==0.14.0
+# onnxruntime 1.23.2 and numpy 2.2.6 have no wheels for Python 3.14, so 3.14 gets newer tested versions
+onnxruntime==1.23.2; python_version < "3.14"
+numpy==2.2.6; python_version < "3.14"
+onnxruntime==1.31.1; python_version >= "3.14"
+numpy==2.5.4; python_version >= "3.14"
