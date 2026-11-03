@@ -1,7 +1,7 @@
 ---
 name: clean-voiceover
-description: Clean a raw voiceover recording against its script. Use when someone wants to clean, edit, or tidy a voiceover or narration recording (remove retakes, false starts, "um"s, asides), or says "clean this voiceover", "cut the retakes out of my recording", "make a clean VO from these takes". Needs a script file and one or more audio files.
-argument-hint: "--script <script.md> --audio <file> [<file> …] [--out <project folder>]"
+description: Clean a raw voiceover recording by cutting out the outtakes, against its script or (if the human confirms) without one. Use when someone wants to clean, edit, or tidy a voiceover or narration recording (remove outtakes, retakes, false starts, "um"s, asides), or says "clean this voiceover", "cut the retakes out of my recording", "make a clean VO from these takes". Needs one or more audio files, and a script file if there is one.
+argument-hint: "[--script <script.md>] --audio <file> [<file> …] [--out <project folder>]"
 allowed-tools: Bash(VOICEOVER_CLEANUP_HOME="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/scripts/vo" *)
 ---
 
@@ -20,10 +20,12 @@ VOICEOVER_CLEANUP_HOME="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/scripts/vo
 
 ## 1. Gather the inputs
 
-- **Script** (`.md` or `.txt`): what the speaker was reading.
+- **Script** (`.md` or `.txt`): what the speaker was reading. If the human gave none, **ask before going on**, for
+  example: "There's no script. I can work out what you meant to say from the recording itself and cut the outtakes
+  from that, but a script gives a more reliable result. Continue without a script?" Continue only on a clear yes.
 - **Audio** (one or more files): the raw recording. Several files are joined in the order given. If the human gives a
   folder, list its audio files in natural file-name order and confirm the order if it isn't obvious.
-- **Project folder** (optional): defaults to `voiceover-cleanup/<script name>/` next to the script.
+- **Project folder** (optional): defaults to `voiceover-cleanup/<script name>/` next to the script (without a script: `voiceover-cleanup/<first audio file name>/` next to the audio).
 - **Misheard names** (optional): product or person names the speech model may get wrong (e.g. "Zyntra" heard as "zentra").
 
 Ask only for what is missing. Check that the files exist before starting the agent.
@@ -34,8 +36,8 @@ if unsure, run `… scripts/vo setup` first (same prefix as above): it checks bo
 
 ## 2. Start the agent
 
-Start the `voiceover-cleanup:voiceover-editor` agent with a prompt that gives the absolute paths of the script, every
-audio file (in order), the project folder, any misheard names, and any rule the human stated (for example "keep the
+Start the `voiceover-cleanup:voiceover-editor` agent with a prompt that gives the absolute paths of the script (or
+"No script: the human confirmed working without one"), every audio file (in order), the project folder, any misheard names, and any rule the human stated (for example "keep the
 first take, not the last"). Also pass these two lines so it can run the tool:
 
 ```
@@ -45,7 +47,8 @@ Plugin data: ${CLAUDE_PLUGIN_DATA}
 
 ## 3. Review loop
 
-1. Show the agent's report to the human as it is, including the review page path (`<project>/review.html`) and the
+1. Show the agent's report to the human as it is (without a script, point out the inferred script it names: anything
+   wrong there is wrong in the cut), including the review page path (`<project>/review.html`) and the
    `vo serve <project>` option for remote machines (the page needs the server for seeking in long files when opened
    over a forwarded port).
 2. If the human gives notes, send them to the **same** agent (resume it with SendMessage; don't start a new one), then

@@ -181,6 +181,44 @@ def build_view(script, alignment, facts, work):
     log.info("prepared view: %d sentences, %d with a complete take, %d without — %s", len(view), n_rule, len(view) - n_rule, work / "takes.md")
     return view
 
+LINE_GAP, LOW_CONF = 0.5, 0.5
+
+def transcript_view(work):
+    """No-script mode: work/transcript.md, the whole transcript as timed lines (a new line at every pause of 0.5 s or
+    more), for Claude to infer the script from. Evidence only, like takes.md. Returns the number of lines."""
+    from transcribe import STRETCHED
+    tr = read_json(work / "transcript.json")
+    words = sorted(tr["words"], key=lambda w: w["start"])
+    sources = read_json(work / "sources.json") if (work / "sources.json").exists() else []
+    lines = ["# Transcript — no script (infer the script from this)",
+             f"Times are seconds in work/source.wav ({tr['duration']:.1f}s). A new line starts at every pause of "
+             f"{LINE_GAP}s or more; (pause N.Ns) marks pauses of 1.5 s or more. "
+             f"word? = the speech model was unsure (confidence < {LOW_CONF}). "
+             f"[stretched N.Ns] = a word lasting over {STRETCHED:.1f}s: speech is probably missing there (probe it).", ""]
+    if len(sources) > 1:
+        lines += ["Input files, joined in this order (a take never spans two files):"] + [
+            f"  {fmt_time(s['start'])}–{fmt_time(s['end'])}  ({s['start']:.2f}–{s['end']:.2f})  {s['file']}" for s in sources] + [""]
+    runs, cur = [], []
+    for w in words:
+        if cur and w["start"] - cur[-1]["end"] >= LINE_GAP:
+            runs.append(cur); cur = []
+        cur.append(w)
+    if cur:
+        runs.append(cur)
+    starts = [s["start"] for s in sources[1:]]
+    for i, r in enumerate(runs):
+        if i:
+            gap = r[0]["start"] - runs[i - 1][-1]["end"]
+            if any(runs[i - 1][-1]["end"] <= t <= r[0]["start"] for t in starts):
+                lines.append("    ── next input file ──")
+            elif gap >= 1.5:
+                lines.append(f"    (pause {gap:.1f}s)")
+        text = " ".join(w["w"] + ("?" if w.get("p") is not None and w["p"] < LOW_CONF else "")
+                        + (f" [stretched {w['end'] - w['start']:.1f}s]" if w["end"] - w["start"] > STRETCHED else "") for w in r)
+        lines.append(f"{r[0]['start']:8.2f}–{r[-1]['end']:8.2f}  {text}")
+    (work / "transcript.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return len(runs)
+
 def retranscribe(work, start, end):
     """Re-transcribe [start, end] of source.wav on its own and splice the words into transcript.json.
     transcript.raw.json (the first pass) is never touched."""

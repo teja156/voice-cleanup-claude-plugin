@@ -1,9 +1,9 @@
 {
   "name": "voiceover-cleanup",
   "version": "0.1.0",
-  "description": "Turn a raw voiceover recording (retakes, false starts, ums) into a clean voiceover that follows your script. Local speech recognition; Claude decides every cut, you approve.",
+  "description": "Clean up your voiceover by cutting out the outtakes: record a script with as many retakes as you need, and get back one take of every sentence (the last complete one by default, checked by Claude), with false starts, fillers and asides removed. Local speech recognition; you approve every cut.",
   "author": { "name": "Teja Swaroop Pothala" },
   "repository": "https://github.com/teja156/voice-cleanup-claude-plugin",
   "license": "MIT",
-  "keywords": ["audio", "voiceover", "narration", "editing", "transcription"]
+  "keywords": ["audio", "voiceover", "narration", "outtakes", "retakes", "editing", "transcription"]
 }

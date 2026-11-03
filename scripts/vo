@@ -28,15 +28,17 @@ pick_python() {
   return 1
 }
 
+vpy() { if [[ -x "$venv/Scripts/python.exe" ]]; then printf '%s' "$venv/Scripts/python.exe"; else printf '%s' "$venv/bin/python"; fi; }   # Windows venvs use Scripts/
+
 stamp="$venv/.requirements.sha256"
 want="$( { sha256sum "$req" 2>/dev/null || shasum -a 256 "$req"; } | cut -d' ' -f1)"
-if [[ ! -x "$venv/bin/python" || "$(cat "$stamp" 2>/dev/null || true)" != "$want" ]]; then
+if [[ ! -x "$(vpy)" || "$(cat "$stamp" 2>/dev/null || true)" != "$want" ]]; then
   py="$(pick_python)" || { log "ERROR: Python 3.10 or newer is required (set VOICEOVER_CLEANUP_PYTHON to its path)"; exit 3; }
   log "setting up the Python environment in $venv (first run only, about a minute)"
   mkdir -p -- "$data"
   "$py" -m venv "$venv" || { log "ERROR: could not create a venv (on Debian/Ubuntu: apt install python3-venv)"; exit 3; }
-  "$venv/bin/python" -m pip install --quiet --upgrade pip >&2
-  "$venv/bin/python" -m pip install --quiet -r "$req" >&2 || { log "ERROR: pip install failed"; exit 3; }
+  "$(vpy)" -m pip install --quiet --upgrade pip >&2
+  "$(vpy)" -m pip install --quiet -r "$req" >&2 || { log "ERROR: pip install failed"; exit 3; }
   printf '%s' "$want" > "$stamp"
   log "Python environment ready"
 fi
@@ -45,4 +47,4 @@ for tool in ffmpeg ffprobe; do
   command -v "$tool" >/dev/null 2>&1 || { log "ERROR: $tool not found on PATH (install ffmpeg: apt install ffmpeg / brew install ffmpeg)"; exit 4; }
 done
 
-exec "$venv/bin/python" -I "$here/vo.py" "$@"
+exec "$(vpy)" -I -X utf8 "$here/vo.py" "$@"      # -X utf8: files and output are UTF-8 on Windows too (-I ignores PYTHONUTF8)

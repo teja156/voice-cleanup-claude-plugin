@@ -4,8 +4,10 @@
 Scripts do the mechanical work; Claude (the voiceover-editor agent) makes every editing decision in work/cuts.json.
 
   vo setup                                          check ffmpeg, download the speech model if missing
-  vo prepare  PROJECT --script FILE --audio FILE [FILE …] [--alias heard=script …]
+  vo prepare  PROJECT --script FILE --audio FILE [FILE …] [--alias heard=script …] [--reuse-transcript]
                                                     transcribe + align → PROJECT/work/takes.md (the prepared view)
+  vo transcribe PROJECT --audio FILE [FILE …]       no script: transcribe only → PROJECT/work/transcript.md, from
+                                                    which Claude infers the script (then prepare --reuse-transcript)
   vo probe    PROJECT START END                     speech blocks and words in a time range of the raw audio
   vo retranscribe PROJECT START END                 re-transcribe a range on its own, rebuild takes.md
   vo draft    PROJECT                               work/cuts.draft.json from the rule "last complete take wins"
@@ -84,30 +86,22 @@ def parse_aliases(items):
         out[k] = v
     return out
 
-def cmd_prepare(a, P):
-    W = P["work"]
+def _sources(a):
     srcs = [Path(x).expanduser().resolve() for x in a.audio]
     for s in srcs:
         if not s.is_file():
             raise SystemExit(f"audio file not found: {s}")
         if s.suffix.lower() not in AUDIO_EXT:
             log.warning("%s: unusual extension, trying it anyway (ffmpeg decides)", s.name)
-    src_script = Path(a.script).expanduser().resolve()
-    if not src_script.is_file():
-        raise SystemExit(f"script not found: {src_script}")
-    P["root"].mkdir(parents=True, exist_ok=True); W.mkdir(parents=True, exist_ok=True)
-    if src_script != P["script"]:
-        if (W / "cuts.json").exists() and P["script"].exists() and P["script"].read_bytes() != src_script.read_bytes():
-            log.warning("the script changed since work/cuts.json was written: its sentence ids may no longer match")
-        shutil.copyfile(src_script, P["script"])
-    script = Script(P["script"])
-    log.info("script: %d sections, %d sentences, %d words", len(script.sections), len(script.sentences), len(script.tokens))
-    aliases = parse_aliases(a.alias)
+    return srcs
+
+def _transcribe(a, P, srcs, **state_extra):
+    """Transcribe the audio into work/ and fill speech the first pass dropped. Returns the transcript summary."""
+    W = P["work"]
     from transcribe import transcribe
     tr = transcribe(srcs, W)
     state = read_json(W / "state.json") if (W / "state.json").exists() else {}
-    state.update(script_source=str(src_script), audio=[str(s) for s in srcs], asr=tr["asr"], model=tr["model"],
-                 aliases=aliases, stage="transcribed", review="none")
+    state.update(audio=[str(s) for s in srcs], asr=tr["asr"], model=tr["model"], stage="transcribed", review="none", **state_extra)
     write_json(W / "state.json", state)
     from takes import retranscribe
     if a.fill_gaps:
@@ -120,6 +114,50 @@ def cmd_prepare(a, P):
         for t0, t1 in stretched_ranges(W):
             new = retranscribe(W, t0, t1)
             log.info("re-transcribed stretched range %.2f–%.2f: %s", t0, t1, " ".join(w["w"] for w in new)[:90])
+    return tr
+
+def cmd_transcribe(a, P):
+    W = P["work"]
+    srcs = _sources(a)
+    P["root"].mkdir(parents=True, exist_ok=True); W.mkdir(parents=True, exist_ok=True)
+    tr = _transcribe(a, P, srcs, mode="no script")
+    from takes import transcript_view
+    n_lines = transcript_view(W)
+    gaps_left = silent_blocks(W)
+    print(f"\nTRANSCRIBED (no script): {len(read_json(W / 'transcript.json')['words'])} words in {n_lines} lines · "
+          f"{tr['duration'] / 60:.1f} min · {tr['asr']} {tr['model']} · RTF {tr['realtime_factor']}")
+    print(f"  speech blocks with no words (dropped speech): {len(gaps_left)}")
+    print(f"  read: {W / 'transcript.md'}")
+    print(f"  next: write the inferred script to {W / 'inferred_script.md'}, then "
+          f"vo prepare {P['root']} --script {W / 'inferred_script.md'} --audio … --reuse-transcript")
+
+def cmd_prepare(a, P):
+    W = P["work"]
+    srcs = _sources(a)
+    src_script = Path(a.script).expanduser().resolve()
+    if not src_script.is_file():
+        raise SystemExit(f"script not found: {src_script}")
+    P["root"].mkdir(parents=True, exist_ok=True); W.mkdir(parents=True, exist_ok=True)
+    if src_script != P["script"]:
+        if (W / "cuts.json").exists() and P["script"].exists() and P["script"].read_bytes() != src_script.read_bytes():
+            log.warning("the script changed since work/cuts.json was written: its sentence ids may no longer match")
+        shutil.copyfile(src_script, P["script"])
+    script = Script(P["script"])
+    log.info("script: %d sections, %d sentences, %d words", len(script.sections), len(script.sentences), len(script.tokens))
+    aliases = parse_aliases(a.alias)
+    if a.reuse_transcript:
+        st = read_json(W / "state.json") if (W / "state.json").exists() else {}
+        if not (W / "transcript.json").exists() or st.get("audio") != [str(s) for s in srcs]:
+            raise SystemExit("--reuse-transcript: no transcript of these audio files in this project (run vo transcribe first)")
+        tr, state = read_json(W / "transcript.json"), st
+        log.info("reusing work/transcript.json (%d words)", len(tr["words"]))
+    else:
+        tr = _transcribe(a, P, srcs)
+        state = read_json(W / "state.json")
+    inferred = src_script.parent == W.resolve() and src_script.name == "inferred_script.md"
+    state.update(script_source=str(src_script), script_inferred=inferred, mode="no script" if inferred else "script",
+                 aliases=aliases, stage="transcribed")
+    write_json(W / "state.json", state)
     al, facts, view = prepare_view(script, W, aliases)
     # sentences with NO take at all: re-transcribe the stretch between the neighbours' rule picks, once
     redo = []
@@ -257,9 +295,14 @@ def main():
     p.add_argument("project"); p.add_argument("--script", required=True); p.add_argument("--audio", required=True, nargs="+")
     p.add_argument("--alias", action="append", metavar="HEARD=SCRIPT",
                    help="a word the speech model mishears, e.g. --alias zentra=zyntra (repeatable)")
-    p.add_argument("--fill-gaps", action=argparse.BooleanOptionalAction, default=True,
-                   help="re-transcribe, on its own, every speech block that got no words (default: on)")
-    p.add_argument("--fix-stretched", action="store_true", help="also re-transcribe around every stretched word (>1.5 s)")
+    p.add_argument("--reuse-transcript", action="store_true",
+                   help="keep work/transcript.json from vo transcribe instead of transcribing again (no-script mode)")
+    t = sub.add_parser("transcribe", help="no script: transcribe only, for Claude to infer the script from")
+    t.add_argument("project"); t.add_argument("--audio", required=True, nargs="+")
+    for q in (p, t):
+        q.add_argument("--fill-gaps", action=argparse.BooleanOptionalAction, default=True,
+                       help="re-transcribe, on its own, every speech block that got no words (default: on)")
+        q.add_argument("--fix-stretched", action="store_true", help="also re-transcribe around every stretched word (>1.5 s)")
     for name in ("probe", "retranscribe"):
         q = sub.add_parser(name); q.add_argument("project"); q.add_argument("start", type=float); q.add_argument("end", type=float)
     for name in ("draft", "validate"):
@@ -270,7 +313,7 @@ def main():
     q.add_argument("project"); q.add_argument("--port", type=int)
     a = ap.parse_args(); setup_logging(a.verbose)
     P = project_paths(a.project) if hasattr(a, "project") else None
-    if a.cmd not in ("setup", "prepare") and not P["script"].exists():
+    if a.cmd not in ("setup", "prepare", "transcribe") and not P["script"].exists():
         raise SystemExit(f"{P['root']} is not a prepared project (no script.md): run `vo prepare` first")
     globals()["cmd_" + a.cmd](a, P)
 
