@@ -5,7 +5,7 @@ is a sustained (≥ 0.18 s) stretch that is clearly above the room noise but wel
 spectral centroid (sibilants sit at 4–8 kHz) and no pitch. Thresholds were measured on a real recording; see
 FEATURE-REPORT-breath-removal.md in the prototype.
 
-cuts.json: "breaths": "cut" | "keep" (default "keep": detect and report, change nothing). A segment with
+cuts.json: "breaths": "cut" | "keep" (default "cut"; "keep" only detects and reports them). A segment with
 "breaths": "keep" is never touched (e.g. playback of a raw recording kept on purpose)."""
 import numpy as np
 
@@ -91,7 +91,7 @@ def apply(cuts, segs, snapped, x, sr):
     """Find the breaths in every kept segment; when cuts.json says "breaths": "cut", cut them. Returns the snapped
     edges (tail and head breaths move an edge), the segments (inside breaths become extra remove ranges; the input
     dicts are not changed), and a record of every breath found and what happened to it."""
-    cut = cuts.get("breaths", "keep") == "cut"
+    cut = cuts.get("breaths", "cut") == "cut"
     out, new, found = [list(s) for s in snapped], [], []
     levels = [level(x, sr, a, b) for a, b in snapped]
     project = float(np.median(levels)) if levels else -120.0

@@ -271,7 +271,7 @@ def cmd_apply(a, P):
         gone = [b for b in br if b["action"] != "kept"]
         print(f"BREATHS: {len(br)} found inside kept speech ({sum(b['end'] - b['start'] for b in br):.1f}s) · "
               + (f"{len(gone)} cut ({sum(b['end'] - b['start'] for b in gone):.1f}s)" if gone else
-                 'none cut (set "breaths": "cut" in cuts.json to remove them)') + f" · list: {W / 'breaths.json'}")
+                 'none cut ("breaths": "keep" in cuts.json)') + f" · list: {W / 'breaths.json'}")
     print(f"REVIEW PAGE: {page}  (or `vo serve {P['root']}`, which prints its URL)")
 
 def cmd_serve(a, P):

@@ -49,12 +49,12 @@ class Breaths(unittest.TestCase):
         chunks.append(room(1.0))
         sf.write(self.work / "source.wav", np.concatenate(chunks), SR, subtype="PCM_24")
         seg = dict(sentence=self.script.sentences[0].id, start=0.5, end=pos, reason="t", **(seg_extra or {}))
-        cuts = dict(segments=[seg], dropped=[], breaths=mode)
+        cuts = dict(segments=[seg], dropped=[], **({} if mode is None else dict(breaths=mode)))
         return build(cuts, dict(words=[]), self.script, self.work), spans
 
-    def test_breath_between_words_is_cut(self):
+    def test_breath_between_words_is_cut_by_default(self):
         res, sp = self.run_build([("w1", voiced(0.6, -22)), ("gap1", room(0.2)), ("breath", band_noise(0.3, -50, 500, 3000)),
-                                  ("gap2", room(0.2)), ("w2", voiced(0.6, -22))])
+                                  ("gap2", room(0.2)), ("w2", voiced(0.6, -22))], mode=None)
         cut = [b for b in res["breaths"] if b["action"] != "kept"]
         self.assertEqual(len(cut), 1, res["breaths"])
         b0, b1 = sp["breath"]
@@ -81,7 +81,7 @@ class Breaths(unittest.TestCase):
         self.assertEqual([b["action"] for b in res["breaths"]], ["kept"])
         self.assertEqual(res["placement"][0]["removed"], [])
 
-    def test_default_reports_but_does_not_cut(self):
+    def test_keep_reports_but_does_not_cut(self):
         res, _ = self.run_build([("w1", voiced(0.6, -22)), ("gap1", room(0.2)), ("breath", band_noise(0.3, -50, 500, 3000)),
                                  ("gap2", room(0.2)), ("w2", voiced(0.6, -22))], mode="keep")
         self.assertEqual([b["action"] for b in res["breaths"]], ["kept"])

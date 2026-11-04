@@ -115,8 +115,8 @@ def validate(cuts, script, duration):
     segs = cuts.get("segments", [])
     if not segs:
         errs.append("no segments")
-    if cuts.get("breaths", "keep") not in ("cut", "keep"):
-        errs.append('"breaths" must be "cut" (remove breaths inside kept speech) or "keep" (the default)')
+    if cuts.get("breaths", "cut") not in ("cut", "keep"):
+        errs.append('"breaths" must be "cut" (the default: remove breaths inside kept speech) or "keep"')
     for i, g in enumerate(segs):
         tag = f"segment {i + 1} ({g.get('sentence')})"
         if g.get("sentence") not in ids:
@@ -227,7 +227,7 @@ def build(cuts, transcript, script, work):
     snapped = clamp_neighbours(segs, [bounds(g) for g in segs], snap)
     import breaths
     snapped, segs, breaths_found = breaths.apply(cuts, segs, snapped, x, sr)
-    write_json(work / "breaths.json", dict(mode=cuts.get("breaths", "keep"), breaths=breaths_found))
+    write_json(work / "breaths.json", dict(mode=cuts.get("breaths", "cut"), breaths=breaths_found))
     pieces = [dict(kind="gap", audio=room_tone(x, sr, LEAD))]
     placement = []
     for i, (g, (a, b)) in enumerate(zip(segs, snapped)):

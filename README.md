@@ -51,10 +51,10 @@ The report names the inferred script and anything Claude was unsure about (for e
 or might belong in the voiceover). Read it: anything wrong in the inferred script is wrong in the cut. If something is
 off, say so ("keep the line about pricing") and the cut is redone from the corrected script.
 
-### Breaths between words (optional)
+### Breaths between words
 
-Breaths *between* sentences are always gone: those gaps are replaced with room tone. Breaths *inside* a kept sentence
-stay by default. Claude asks whether to cut them too; you can also just say "remove the breaths" at any point.
+Breaths *between* sentences are always gone: those gaps are replaced with room tone. Plain breath sounds *inside* a
+kept sentence are cut too, by default. To keep them, say "keep the breaths" (for the whole voiceover or one sentence).
 
 - **How they're found:** from the audio alone, after the cut is decided (word timestamps are too coarse for this). A
   breath is a stretch of at least 0.18 s that is clearly above the room noise but well below speech (−46 dB or
