@@ -42,6 +42,8 @@ leaves the machine.
   (no script: `voiceover-cleanup/<first audio file name>/` next to the audio).
 - **Misheard names (optional):** product or person names the speech model may mishear, as `--alias heard=script`
   (e.g. `--alias zentra=zyntra`). Add them later if `takes.md` shows a name heard wrong in every take.
+- **Breaths:** whether to cut the breaths between words inside kept speech ("Breaths: cut" or "Breaths: keep" in your
+  prompt). As the main session, ask if the human didn't say. Default: keep.
 
 If the audio is missing or unclear, ask (main session) or report the problem (subagent). If there is **no script**, don't
 start without one until the human has said to go ahead without it:
@@ -115,12 +117,18 @@ decide again (sentence ids can change).
 - **Pauses:** leave `pause_after: null` (defaults: 0.45 s between sentences, 0.85 s between paragraphs, 1.1 s at a new
   section) unless the human asked otherwise. `"natural"` keeps the recorded pause, if the next segment follows directly.
 - **Reasons:** every segment needs a short, plain `reason`. Say which take was kept and why, and anything you changed from the draft.
+- **Breaths:** set top-level `"breaths": "cut"` only if the human asked for it (otherwise `"keep"`, the default). Breaths
+  are found from the audio by `vo apply`, not by you: you can't see them in `takes.md`. Every segment you keep **raw on
+  purpose** (playback of an old recording, a quoted clip, anything that must sound exactly as recorded) gets
+  `"breaths": "keep"`: its quiet sounds look like breaths and would otherwise be cut.
 
 `cuts.json` format (times are seconds in `work/source.wav`):
 ```json
-{ "project": "<name>", "author": "voiceover-editor — <N changes vs the rule draft>",
+{ "project": "<name>", "author": "voiceover-editor — <N changes vs the rule draft>", "breaths": "keep",
   "segments": [ { "sentence": "S4.P1.2", "start": 176.80, "end": 188.30, "remove": [[181.90, 182.35]],
-                  "pause_after": null, "reason": "Last complete take; removed the mid-sentence 'uh'." } ],
+                  "pause_after": null, "reason": "Last complete take; removed the mid-sentence 'uh'." },
+                { "sentence": "S5.P1.1", "start": 210.10, "end": 240.00, "breaths": "keep",
+                  "reason": "Kept raw on purpose: playback of the old recording." } ],
   "dropped":  [ { "start": 66.22, "end": 67.04, "what": "false start", "reason": "S2.P2.3: merged into the take" } ],
   "notes": "" }
 ```
@@ -128,7 +136,8 @@ decide again (sentence ids can change).
 ## Revisions (you're resumed with notes, or the human gives them)
 
 Turn each note into a `cuts.json` edit: choose another take, move an edge, change a pause, keep an aside, or remove a
-sound. Then `vo validate`, `vo apply` again, and report only what changed (same next steps).
+sound. "Remove the breaths" / "keep the breaths" switches the top-level `"breaths"`; "keep the breaths in S6.P2.1" sets
+`"breaths": "keep"` on that segment. Then `vo validate`, `vo apply` again, and report only what changed (same next steps).
 
 ## Report format (your final message)
 
@@ -140,6 +149,7 @@ Judgment calls (different from the rule draft):
 - <sentence id>: <what you did and why, one line>
 Missing / needs re-recording: <ids or "none">
 Script: <"given" or "inferred from the recording: <project>/work/inferred_script.md (check it; uncertain parts: …)">
+Breaths: <the BREATHS line from `vo apply`, e.g. "26 found (7.0 s), 20 cut (5.4 s)" or "26 found, kept (say 'remove the breaths' to cut them)">
 Warnings: <or "none">
 
 NEXT STEPS

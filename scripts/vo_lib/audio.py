@@ -115,6 +115,8 @@ def validate(cuts, script, duration):
     segs = cuts.get("segments", [])
     if not segs:
         errs.append("no segments")
+    if cuts.get("breaths", "keep") not in ("cut", "keep"):
+        errs.append('"breaths" must be "cut" (remove breaths inside kept speech) or "keep" (the default)')
     for i, g in enumerate(segs):
         tag = f"segment {i + 1} ({g.get('sentence')})"
         if g.get("sentence") not in ids:
@@ -132,6 +134,8 @@ def validate(cuts, script, duration):
             errs.append(f"{tag}: pause_after must be seconds (0–5), \"natural\", or omitted")
         if not g.get("reason"):
             warns.append(f"{tag}: no reason given")
+        if g.get("breaths", "keep") != "keep":
+            errs.append(f"{tag}: \"breaths\" on a segment can only be \"keep\" (leave this segment's breaths alone)")
     timed = sorted((g for g in segs if isinstance(g.get("start"), (int, float)) and isinstance(g.get("end"), (int, float))),
                    key=lambda g: g["start"])
     for g, h in zip(timed, timed[1:]):
@@ -221,6 +225,9 @@ def build(cuts, transcript, script, work):
         return edge_start(g["start"]), edge_end(g["end"])
 
     snapped = clamp_neighbours(segs, [bounds(g) for g in segs], snap)
+    import breaths
+    snapped, segs, breaths_found = breaths.apply(cuts, segs, snapped, x, sr)
+    write_json(work / "breaths.json", dict(mode=cuts.get("breaths", "keep"), breaths=breaths_found))
     pieces = [dict(kind="gap", audio=room_tone(x, sr, LEAD))]
     placement = []
     for i, (g, (a, b)) in enumerate(zip(segs, snapped)):
@@ -276,6 +283,6 @@ def build(cuts, transcript, script, work):
     sf.write(work / "clean.wav", np.clip(audio, -1, 1), sr, subtype="PCM_24")
     dur = len(audio) / sr
     write_json(work / "clean_words.json", dict(duration=round(dur, 3), sentences=sent_span, words=kept_words, placement=placement,
-                                               warnings=warns))
+                                               warnings=warns, breaths=breaths_found))
     log.info("clean voiceover: %.1f min (source %.1f min, %.1f min removed) → %s", dur / 60, dur_src / 60, (dur_src - dur) / 60, work / "clean.wav")
-    return dict(duration=dur, source_duration=dur_src, warnings=warns, placement=placement)
+    return dict(duration=dur, source_duration=dur_src, warnings=warns, placement=placement, breaths=breaths_found)

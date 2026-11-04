@@ -51,6 +51,22 @@ The report names the inferred script and anything Claude was unsure about (for e
 or might belong in the voiceover). Read it: anything wrong in the inferred script is wrong in the cut. If something is
 off, say so ("keep the line about pricing") and the cut is redone from the corrected script.
 
+### Breaths between words (optional)
+
+Breaths *between* sentences are always gone: those gaps are replaced with room tone. Breaths *inside* a kept sentence
+stay by default. Claude asks whether to cut them too; you can also just say "remove the breaths" at any point.
+
+- **How they're found:** from the audio alone, after the cut is decided (word timestamps are too coarse for this). A
+  breath is a stretch of at least 0.18 s that is clearly above the room noise but well below speech (−46 dB or
+  quieter), sits in the 500–4200 Hz range (unlike "s" and "sh" sounds, which are higher), and has no pitch (unlike a
+  quiet word).
+- **How they're cut:** a breath between two words is cut out, leaving 40 ms of it on each side so the join stays
+  natural. A breath at the start or end of a sentence is trimmed off that edge. A soft, breathy "um" often goes with it.
+- **Always reported:** every `vo apply` counts the breaths it found, cut or not, and the review page lists each one with
+  a button to hear it in the original. A segment kept raw on purpose (like playback of an old recording) is marked so
+  its breaths are never touched.
+- **Cost:** a few seconds per recording (about 5 s for 25 minutes of audio). No extra model or download.
+
 **Good to know**
 
 - **Local and private.** Speech recognition runs on your CPU. No audio leaves your machine.
@@ -222,6 +238,7 @@ You can also run the agent as your main session: `claude --agent voiceover-clean
     ├── cuts.draft.json      the rule's starting point
     ├── cuts.json            Claude's decisions (what was kept, removed, and dropped, with reasons)
     ├── clean_words.json     where every kept sentence and word landed in clean.wav
+    ├── breaths.json         every breath found inside kept speech, and whether it was cut
     ├── edits.json           the editor's clip list (after `vo edit`)
     └── clean_edited_words.json  word times in clean_edited.wav (after rendering in the editor)
 ```

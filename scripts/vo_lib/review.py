@@ -22,6 +22,10 @@ def write(name, P, cuts, clean, status="awaiting review"):
     for d in cuts.get("dropped", []):
         dropped.append(f'''<tr><td class="id">{fmt_time(d["start"])}</td><td><b>{esc(d.get("what", ""))}</b> — {esc(d.get("reason", ""))}</td>
 <td class="pl"><button class="ghost" data-src="work/source.wav" data-a="{d["start"]:.2f}" data-b="{d["end"]:.2f}">▶ original</button></td></tr>''')
+    breaths = [f'''<tr><td class="id">{fmt_time(b["start"])}</td><td><b>{esc(b["action"])}</b> — {esc(b["sentence"])}, {b["end"] - b["start"]:.2f}s,
+peak {b["peak_db"]} dB{f" · {esc(b['note'])}" if b.get("note") else ""}</td>
+<td class="pl"><button class="ghost" data-src="work/source.wav" data-a="{max(0, b["start"] - 0.6):.2f}" data-b="{b["end"] + 0.6:.2f}">▶ original</button></td></tr>'''
+               for b in clean.get("breaths", [])]
     warns = "".join(f"<li>{esc(w)}</li>" for w in clean.get("warnings", []))
     src_d, cl_d = clean.get("source_duration"), clean.get("duration")
     stats = f"{len(rows)} sentences kept · {len(dropped)} pieces dropped" + (f" · {cl_d / 60:.1f} min clean (from {src_d / 60:.1f} min raw)" if src_d else f" · {cl_d / 60:.1f} min")
@@ -56,6 +60,7 @@ audio.main {{ width: 100%; }}
 {f'<h2>Warnings</h2><ul class="warn">{warns}</ul>' if warns else ""}
 <h2>Kept, in order</h2><table>{"".join(rows)}</table>
 <h2>Dropped</h2><table>{"".join(dropped) or "<tr><td>none</td></tr>"}</table>
+{f'<h2>Breaths inside kept speech</h2><p class="small">"▶ original" plays the breath with 0.6 s either side.</p><table>{"".join(breaths)}</table>' if breaths else ""}
 </main>
 <script>
 // play a range of a file; one shared player so only one clip plays at a time
