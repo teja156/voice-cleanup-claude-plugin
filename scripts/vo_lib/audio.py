@@ -132,14 +132,48 @@ def validate(cuts, script, duration):
             errs.append(f"{tag}: pause_after must be seconds (0–5), \"natural\", or omitted")
         if not g.get("reason"):
             warns.append(f"{tag}: no reason given")
+    timed = sorted((g for g in segs if isinstance(g.get("start"), (int, float)) and isinstance(g.get("end"), (int, float))),
+                   key=lambda g: g["start"])
+    for g, h in zip(timed, timed[1:]):
+        if h["start"] < g["end"] - 0.001:
+            errs.append(f"{h.get('sentence')} starts at {h['start']} inside {g.get('sentence')} ({g['start']}–{g['end']}): "
+                        f"the overlap would play twice; start it at or after {g['end']}")
     order = [s.id for s in script.sentences]
-    got = [g.get("sentence") for g in segs if g.get("sentence") in ids]
+    got =[g.get("sentence") for g in segs if g.get("sentence") in ids]
     if got != sorted(got, key=order.index):
         warns.append("segments are not in script order (allowed, but check that this is intended)")
     missing = [x for x in order if x not in seen]
     if missing:
         warns.append(f"{len(missing)} script sentence(s) not in the cut: {', '.join(missing[:8])}{'…' if len(missing) > 8 else ''}")
     return errs, warns
+
+def clamp_neighbours(segs, snapped, snap):
+    """Keep snapped edges from reaching into the next take in the recording.
+
+    Snapping can push an end to the end of its speech block, and a start back by a small pad. When two kept sentences
+    were spoken back-to-back they share one block, so the first one's end would swallow the second (which then plays
+    twice). For each pair of segments next to each other in source time, an end may not pass the next segment's cut
+    start, and a start may not come before the previous segment's cut end. If the two still overlap (both inside the
+    gap between the cuts), they meet at one shared point: the quietest frame in that gap."""
+    out = [list(s) for s in snapped]
+    order = sorted(range(len(segs)), key=lambda k: segs[k]["start"])
+    for k, n in zip(order, order[1:]):
+        a_end, b_start = segs[k]["end"], segs[n]["start"]
+        if b_start < a_end:                       # overlapping cuts: validate() rejects these
+            continue
+        out[k][1] = min(out[k][1], b_start)
+        out[n][0] = max(out[n][0], a_end)
+        if out[k][1] > out[n][0]:
+            i0, i1 = snap._f(a_end), snap._f(b_start)
+            cut = (i0 + int(np.argmin(snap.rms[i0:i1 + 1]))) * FRAME + FRAME / 2 if i1 > i0 else (a_end + b_start) / 2
+            cut = min(max(cut, a_end), b_start)
+            out[k][1] = out[n][0] = cut
+    return [tuple(s) for s in out]
+
+def overlaps(placement, tol=XFADE):
+    """Pairs of kept sentences whose source ranges overlap by more than `tol` s (that audio would play twice)."""
+    rs = sorted((p["src"][0], p["src"][1], p["sentence"]) for p in placement)
+    return [(a[2], b[2], round(a[1] - b[0], 3)) for a, b in zip(rs, rs[1:]) if a[1] - b[0] > tol]
 
 def build(cuts, transcript, script, work):
     """Apply cuts.json exactly (Claude decides, this only executes)."""
@@ -159,8 +193,8 @@ def build(cuts, transcript, script, work):
     segs = cuts["segments"]
 
     # Edges come from the AUDIO's speech blocks, not word timestamps: the ASR often misplaces the words next to a
-    # pause by up to a second, which would clip first/last words. Guards stop an edge from running into a
-    # neighbouring sentence that was spoken back-to-back (no pause between them).
+    # pause by up to a second, which would clip first/last words. clamp_neighbours() then stops an edge from running
+    # into a neighbouring sentence that was spoken back-to-back (no pause between them, so one speech block).
     from plan_blocks import blocks as speech_blocks
     blocks = speech_blocks(snap, 0, dur_src, 0.25)
     def block_at(t):
@@ -186,7 +220,7 @@ def build(cuts, transcript, script, work):
     def bounds(g):
         return edge_start(g["start"]), edge_end(g["end"])
 
-    snapped = [bounds(g) for g in segs]
+    snapped = clamp_neighbours(segs, [bounds(g) for g in segs], snap)
     pieces = [dict(kind="gap", audio=room_tone(x, sr, LEAD))]
     placement = []
     for i, (g, (a, b)) in enumerate(zip(segs, snapped)):
@@ -215,7 +249,10 @@ def build(cuts, transcript, script, work):
             else:
                 pieces.append(dict(kind="gap", audio=room_tone(x, sr, default if pa in (None, "natural") else float(pa))))
     pieces.append(dict(kind="gap", audio=room_tone(x, sr, TAIL)))
-    keep = [k for k, p in enumerate(pieces) if len(p["audio"]) > 0]
+    for s1, s2, d in overlaps(placement):
+        warns.append(f"{s1} and {s2} overlap by {d:.2f}s in the recording, so that audio plays twice")
+        log.warning(warns[-1])
+    keep =[k for k, p in enumerate(pieces) if len(p["audio"]) > 0]
     remap = {k: n for n, k in enumerate(keep)}
     pieces = [pieces[k] for k in keep]
     audio, offsets = join(pieces, sr)

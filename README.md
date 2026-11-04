@@ -302,7 +302,16 @@ evidence the cut needs.
   treated as asides and dropped.
 - Without a script, Claude decides what counts as an aside and what belongs in the voiceover. Check the inferred script.
 - Word end times are estimated by the model, so cuts are snapped to the audio's own silences. A very fast read with no
-  pauses between sentences gives the snapping less room.
+  pauses between sentences gives the snapping less room. Two sentences spoken back to back meet at the quietest point
+  between them, so neither is cut short or played twice.
+
+## Tests
+
+```
+python -m unittest discover -s tests
+```
+
+Run it with the plugin's venv Python (it needs numpy and soundfile).
 
 ## License
 
