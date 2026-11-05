@@ -70,9 +70,10 @@ def _snapshot_revision(path):
 _MODELS = {}
 
 def _fetch(repo, revision, patterns=None):
-    """Local copy of a pinned model snapshot in models_dir(); downloaded once, the first time it is needed."""
+    """Local copy of a pinned model snapshot in models_dir(); downloaded once, the first time it is needed.
+    The models are public: token=False keeps huggingface_hub from reading (and sending) a saved Hugging Face login."""
     from huggingface_hub import snapshot_download
-    kw = dict(revision=revision, cache_dir=str(models_dir()), allow_patterns=patterns)
+    kw = dict(revision=revision, cache_dir=str(models_dir()), allow_patterns=patterns, token=False)
     try:
         return snapshot_download(repo, local_files_only=True, **kw)
     except Exception:

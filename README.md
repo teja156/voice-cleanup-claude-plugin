@@ -97,13 +97,8 @@ The plugin is published through [teja-claude-marketplace](https://github.com/tej
 Shell equivalents: `claude plugin marketplace add teja156/teja-claude-marketplace` and
 `claude plugin install voiceover-cleanup@teja-claude-marketplace`.
 
-**From a local clone** (for development):
-
-```
-git clone https://github.com/teja156/voice-cleanup-claude-plugin.git ~/voiceover-cleanup
-```
-
-**Try it without installing:** `claude --plugin-dir ~/voiceover-cleanup`
+**For development:** with a local copy of this repository (below called `~/voiceover-cleanup`), start Claude Code with
+`claude --plugin-dir ~/voiceover-cleanup` to try your changes without installing.
 
 Restart Claude Code (or run `/reload-plugins`) after installing. Check with `/plugin`: `voiceover-cleanup` should be listed.
 
@@ -115,11 +110,7 @@ The first run sets things up by itself:
 2. It downloads the speech model the first time it is needed (see [Speech model](#speech-model)).
 
 Both go to the plugin's data folder, so plugin updates keep them. To do this ahead of time, ask Claude to
-"run the voiceover-cleanup setup", or run it yourself:
-
-```
-VOICEOVER_CLEANUP_HOME=~/.local/share/voiceover-cleanup ~/voiceover-cleanup/scripts/vo setup
-```
+"run the voiceover-cleanup setup". From a local copy of the repository, `scripts/vo setup` does the same.
 
 ## Use
 
