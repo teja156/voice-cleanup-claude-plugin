@@ -43,7 +43,7 @@ leaves the machine.
 - **Misheard names (optional):** product or person names the speech model may mishear, as `--alias heard=script`
   (e.g. `--alias zentra=zyntra`). Add them later if `takes.md` shows a name heard wrong in every take.
 - **Breaths:** breath sounds between words inside kept speech are cut by default. Keep them only if your prompt says
-  "Breaths: keep" or the human asks. Don't ask about it.
+  to keep breaths or the human asks. Don't ask about it.
 
 If the audio is missing or unclear, ask (main session) or report the problem (subagent). If there is **no script**, don't
 start without one until the human has said to go ahead without it:

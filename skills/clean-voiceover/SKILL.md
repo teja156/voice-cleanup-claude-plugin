@@ -27,8 +27,8 @@ VOICEOVER_CLEANUP_HOME="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/scripts/vo
   folder, list its audio files in natural file-name order and confirm the order if it isn't obvious.
 - **Project folder** (optional): defaults to `voiceover-cleanup/<script name>/` next to the script (without a script: `voiceover-cleanup/<first audio file name>/` next to the audio).
 - **Misheard names** (optional): product or person names the speech model may get wrong (e.g. "Zyntra" heard as "zentra").
-- **Breaths:** breath sounds between words inside the kept speech are cut by default. Don't ask; pass "Breaths: keep"
-  only if the human said to keep them.
+- **Breaths:** breath sounds between words inside the kept speech are cut by default. Don't ask. Only if the human said
+  to keep them, tell the agent to keep breaths (see below).
 
 Ask only for what is missing. Check that the files exist before starting the agent.
 
@@ -39,8 +39,8 @@ if unsure, run `… scripts/vo setup` first (same prefix as above): it checks bo
 ## 2. Start the agent
 
 Start the `voiceover-cleanup:voiceover-editor` agent with a prompt that gives the absolute paths of the script (or
-"No script: the human confirmed working without one"), every audio file (in order), the project folder, any misheard names, "Breaths: keep" if the human asked to keep breaths, and any rule the human stated (for example "keep the
-first take, not the last"). Also pass these two lines so it can run the tool:
+"No script: the human confirmed working without one"), every audio file (in order), the project folder, any misheard names, the words "keep breaths" if the human asked to keep breaths, and any rule the human stated (for
+example "keep the first take, not the last"). Also include these two lines so it can run the tool:
 
 ```
 Plugin root: ${CLAUDE_PLUGIN_ROOT}
